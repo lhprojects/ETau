@@ -64,11 +64,15 @@ bool BeforeECal(double const *r) {
     return false;
 }
 
-void CollectBS(double &e, double &n, double &eElec, MCParticle *elec) {
+void CollectBS(double *p4, double &n, double *p4Elec, MCParticle *elec) {
 
     if(!elec || abs(elec->getPDG()) != 11) return;
     if(!BeforeECal(elec->getEndpoint())) {
-        eElec = elec->getEnergy();
+        p4Elec[0] += elec->getEnergy();
+        p4Elec[1] += elec->getMomentum()[0];
+        p4Elec[2] += elec->getMomentum()[1];
+        p4Elec[3] += elec->getMomentum()[2];
+
         return;
     }
     for(int d = 0; d < (int)elec->getDaughters().size(); ++d) {
@@ -77,10 +81,13 @@ void CollectBS(double &e, double &n, double &eElec, MCParticle *elec) {
             //printf("%d %f %f %f\n", dau->getPDG(), dau->getVertex()[0], dau->getVertex()[1], dau->getVertex()[2]);
             if(BeforeECal(dau->getVertex())) {
                 n += 1;
-                e += dau->getEnergy();
+                p4[0] += dau->getEnergy();
+                p4[1] += dau->getMomentum()[0];
+                p4[2] += dau->getMomentum()[1];
+                p4[3] += dau->getMomentum()[2];
             }
         } else if(abs(dau->getPDG()) == 11 && BeforeECal(dau->getVertex())) {
-            CollectBS(e, n, eElec, dau);
+            CollectBS(p4, n, p4Elec, dau);
         }
 
     }
@@ -109,45 +116,48 @@ double Angle(double const *p1, double const *p2) {
     return theta;
 }
 
+
+MCParticle *GetRealParticle(MCParticle *mcp) {
+    if(!mcp) return mcp;
+    int pdg = mcp->getPDG();
+    if(mcp->getDaughters().size()==1 && mcp->getDaughters()[0]->getPDG() == pdg) mcp = mcp->getDaughters()[0];
+    if(mcp->getDaughters().size()==1 && mcp->getDaughters()[0]->getPDG() == pdg) mcp = mcp->getDaughters()[0];
+    if(mcp->getDaughters().size()==1 && mcp->getDaughters()[0]->getPDG() == 94) {
+        mcp = mcp->getDaughters()[0];
+        for(int i = 0; i < (int)mcp->getDaughters().size(); ++i) {
+            if(mcp->getDaughters()[i]->getPDG() == pdg) {
+                mcp = mcp->getDaughters()[i];
+                break;
+            }
+        }
+    }
+    return mcp;
+}
 void Read(std::string rf, std::vector<std::string> const &files) {
 
     TFile root(rf.c_str(), "RECREATE");
     TTree tree("evts", "evts");
 
     // Monte Carlo Truth
-    double EMC_P1;
-    double PxMC_P1;
-    double PyMC_P1;
-    double PzMC_P1;
-
-    double EMC_P2;
-    double PxMC_P2;
-    double PyMC_P2;
-    double PzMC_P2;
+    double P1[4]; // original electron
+    double P2[4];
+    double FSR[4];
+    double ISR1[4];
+    double ISR2[4];
+    double P1F[4]; // electron in track
+    double P2F[4];
+    double P1BS[4];  // photon of bremsstrahlung
+    double P2BS[4];
 
     double EMC_Ps;
     double MMC_Ps;
  
-    double EMC_P1F;
-    double EMC_P2F;
-
-    double EMC_P1BS;
     double NMC_P1BS;
-    double EMC_P2BS;
     double NMC_P2BS;
 
-    double EMC_ISR1;
-    double EMC_ISR2;
-
-    double EMC_FSR;
-    double PxMC_FSR;
-    double PyMC_FSR;
-    double PzMC_FSR;
-
-    double EMC_tot;
+    double EMC_cms;
     double EMC_totForSmear;
     double AMC_FSRPs;
-
     double N_PDG94;
 
 
@@ -159,36 +169,22 @@ void Read(std::string rf, std::vector<std::string> const &files) {
 
 
 
-    tree.Branch("EMC_P1", &EMC_P1, "EMC_P1/D");
-    tree.Branch("PxMC_P1", &PxMC_P1, "PxMC_P1/D");
-    tree.Branch("PyMC_P1", &PyMC_P1, "PyMC_P1/D");
-    tree.Branch("PzMC_P1", &PzMC_P1, "PzMC_P1/D");
-
-    tree.Branch("EMC_P2", &EMC_P2, "EMC_P2/D");
-    tree.Branch("PxMC_P2", &PxMC_P2, "PxMC_P2/D");
-    tree.Branch("PyMC_P2", &PyMC_P2, "PyMC_P2/D");
-    tree.Branch("PzMC_P2", &PzMC_P2, "PzMC_P2/D");
+    tree.Branch("P1", P1, "P1[4]/D");
+    tree.Branch("P2", P2, "P2[4]/D");
+    tree.Branch("FSR", FSR, "FSR[4]/D");
+    tree.Branch("ISR1", ISR1, "ISR1[4]/D");
+    tree.Branch("ISR2", ISR2, "ISR2[4]/D");
+    tree.Branch("P1F", P1F, "P1F[4]/D");
+    tree.Branch("P2F", P2F, "P2F[4]/D");
+    tree.Branch("P1BS", P1BS, "P1BS[4]/D");
+    tree.Branch("P2BS", P2BS, "P2BS[4]/D");
 
     tree.Branch("EMC_Ps", &EMC_Ps, "EMC_Ps/D");
     tree.Branch("MMC_Ps", &MMC_Ps, "MMC_Ps/D");
-
-    tree.Branch("EMC_P1BS", &EMC_P1BS, "EMC_P1BS/D");
-    tree.Branch("EMC_P2BS", &EMC_P2BS, "EMC_P2BS/D");
     tree.Branch("NMC_P1BS", &NMC_P1BS, "NMC_P1BS/D");
     tree.Branch("NMC_P2BS", &NMC_P2BS, "NMC_P2BS/D");
 
-    tree.Branch("EMC_P1F", &EMC_P1F, "EMC_P1F/D");
-    tree.Branch("EMC_P2F", &EMC_P2F, "EMC_P2F/D");
-
-    tree.Branch("EMC_ISR1", &EMC_ISR1, "EMC_ISR1/D");
-    tree.Branch("EMC_ISR2", &EMC_ISR2, "EMC_ISR2/D");
-
-    tree.Branch("EMC_FSR", &EMC_FSR, "EMC_FSR/D");
-    tree.Branch("PxMC_FSR", &PxMC_FSR, "PxMC_FSR/D");
-    tree.Branch("PyMC_FSR", &PyMC_FSR, "PyMC_FSR/D");
-    tree.Branch("PzMC_FSR", &PzMC_FSR, "PzMC_FSR/D");
-
-    tree.Branch("EMC_tot", &EMC_tot, "EMC_tot/D");
+    tree.Branch("EMC_cms", &EMC_cms, "EMC_cms/D");
     tree.Branch("EMC_totForSmear", &EMC_totForSmear, "EMC_totForSmear/D");
     tree.Branch("AMC_FSRPs", &AMC_FSRPs, "AMC_FSRPs/D");
 
@@ -211,43 +207,28 @@ void Read(std::string rf, std::vector<std::string> const &files) {
         for(LCEvent *evt; (evt = lcReader->readNextEvent()); )
         {
 
-            EMC_P1 = 0;
-            PxMC_P1 = 0;
-            PyMC_P1 = 0;
-            PzMC_P1 = 0;
+            for(int i = 0; i < 4; ++i) P1[i] = 0;
+            for(int i = 0; i < 4; ++i) P2[i] = 0;
+            for(int i = 0; i < 4; ++i) FSR[i] = 0;
+            for(int i = 0; i < 4; ++i) ISR1[i] = 0;
+            for(int i = 0; i < 4; ++i) ISR2[i] = 0;
+            for(int i = 0; i < 4; ++i) P1F[i] = 0;
+            for(int i = 0; i < 4; ++i) P2F[i] = 0;
+            for(int i = 0; i < 4; ++i) P1BS[i] = 0;
+            for(int i = 0; i < 4; ++i) P2BS[i] = 0;
 
-            EMC_P2 = 0;
-            PxMC_P2 = 0;
-            PyMC_P2 = 0;
-            PzMC_P2 = 0;
-
+            NMC_P1BS = 0;
+            NMC_P2BS = 0;
             EMC_Ps = 0;
             MMC_Ps = 0;
 
-            EMC_P1F = 0;
-            EMC_P2F = 0;
-
-            EMC_P1BS = 0;
-            NMC_P1BS = 0;
-            EMC_P2BS = 0;
-            NMC_P2BS = 0;
-
-            EMC_ISR1 = 0;
-            EMC_ISR2 = 0;
-
-            EMC_FSR = 0;
-            PxMC_FSR = 0;
-            PyMC_FSR = 0;
-            PzMC_FSR = 0;
-
-            EMC_tot = 0;
+            EMC_cms = 0;
             EMC_totForSmear = 0;
             AMC_FSRPs = 0;
-
             N_PDG94 = 0;
 
             E_tot = 0;
-            M_tot = 0;
+            M_tot = 0;  
             E_Ps = 0;
             M_Ps = 0;
 
@@ -261,26 +242,8 @@ void Read(std::string rf, std::vector<std::string> const &files) {
                 MCParticle *mcp = (MCParticle *)mccol->getElementAt(i);
                 int pdg = mcp->getPDG();
 
-                if (pdg == 11 && mcp->getParents().size() == 1 && mcp->getParents()[0]->getPDG() == 94)
+                if (pdg == 94)
                 {
-                    EMC_P1 = mcp->getEnergy();
-                    PxMC_P1 = mcp->getMomentum()[0];
-                    PyMC_P1 = mcp->getMomentum()[1];
-                    PzMC_P1 = mcp->getMomentum()[2];
-                    CollectBS(EMC_P1BS, NMC_P1BS, EMC_P1F, mcp);
-                }
-                else if (pdg == -11 && mcp->getParents().size() == 1 && mcp->getParents()[0]->getPDG() == 94)
-                {
-                    EMC_P2 = mcp->getEnergy();
-                    PxMC_P2 = mcp->getMomentum()[0];
-                    PyMC_P2 = mcp->getMomentum()[1];
-                    PzMC_P2 = mcp->getMomentum()[2];
-                    CollectBS(EMC_P2BS, NMC_P2BS, EMC_P2F, mcp);
-                }
-                
-                if (mcp->getPDG() == 94)
-                {
-                    N_PDG94 += 1;
                     pdg94 += 1;
                 }
 
@@ -292,72 +255,54 @@ void Read(std::string rf, std::vector<std::string> const &files) {
                         e1[0] = mcp->getMomentum()[0];
                         e1[1] = mcp->getMomentum()[1];
                         e1[2] = mcp->getMomentum()[2];
+                        MCParticle *rmcp = GetRealParticle(mcp);
+                        
+                        P1[0] = rmcp->getEnergy();
+                        for(int i = 1; i < 4; ++i) P1[i] = rmcp->getMomentum()[i-1];
+                        CollectBS(P1BS, NMC_P1BS, P1F, rmcp);
                     }
                     else if (pdg == -11)
                     {
                         e2[0] = mcp->getMomentum()[0];
                         e2[1] = mcp->getMomentum()[1];
                         e2[2] = mcp->getMomentum()[2];
+                        MCParticle *rmcp = GetRealParticle(mcp);
+
+                        P2[0] = rmcp->getEnergy();
+                        for (int i = 1; i < 4; ++i) P2[i] = rmcp->getMomentum()[i-1];
+                        CollectBS(P2BS, NMC_P2BS, P2F, rmcp);
                     }
                     else if (pdg == 22 && i == 0)
                     {
-                        EMC_ISR1 = mcp->getEnergy();
+                        ISR1[0] = mcp->getEnergy();
+                        for (int i = 1; i < 4; ++i) ISR1[i] = mcp->getMomentum()[i-1];
                     }
                     else if (pdg == 22 && i == 1)
                     {
-                        EMC_ISR2 = mcp->getEnergy();
+                        ISR2[0] = mcp->getEnergy();
+                        for (int i = 1; i < 4; ++i) ISR2[i] = mcp->getMomentum()[i-1];
                     }
                     else if (pdg == 22 && i >= 2)
                     {
-                        EMC_FSR += mcp->getEnergy();
-                        PxMC_FSR += mcp->getMomentum()[0];
-                        PyMC_FSR += mcp->getMomentum()[1];
-                        PzMC_FSR += mcp->getMomentum()[2];
+                        FSR[0] = mcp->getEnergy();
+                        for (int i = 1; i < 4; ++i) FSR[i] = mcp->getMomentum()[i-1];
+
                         fsr[0] = mcp->getMomentum()[0];
                         fsr[1] = mcp->getMomentum()[1];
                         fsr[2] = mcp->getMomentum()[2];
                     }
 
-                    EMC_tot += mcp->getEnergy();
+                    EMC_cms += mcp->getEnergy();
                 }
             } // for elements
 
-            if (!N_PDG94)
-            {
-                for (int i = 0; i < (int)mccol->getNumberOfElements(); ++i)
-                {
-                    MCParticle *mcp = (MCParticle *)mccol->getElementAt(i);
-                    int pdg = mcp->getPDG();
-                    if (pdg == 11 && mcp->getParents().size() == 0)
-                    {
-                        EMC_P1 = mcp->getEnergy();
-                        PxMC_P1 = mcp->getMomentum()[0];
-                        PyMC_P1 = mcp->getMomentum()[1];
-                        PzMC_P1 = mcp->getMomentum()[2];
-                        CollectBS(EMC_P1BS, NMC_P1BS, EMC_P1F, mcp);
-                    }
-                    else if (pdg == -11 && mcp->getParents().size() == 0)
-                    {
-                        EMC_P2 = mcp->getEnergy();
-                        PxMC_P2 = mcp->getMomentum()[0];
-                        PyMC_P2 = mcp->getMomentum()[1];
-                        PzMC_P2 = mcp->getMomentum()[2];
-                        CollectBS(EMC_P2BS, NMC_P2BS, EMC_P2F, mcp);
-                    }
-                } // for elements
-            }
-
-            double en = EMC_P1 + EMC_P2;
-            double px = PxMC_P1 + PxMC_P2;
-            double py = PyMC_P1 + PyMC_P2;
-            double pz = PzMC_P1 + PzMC_P2;
-            EMC_Ps = en;
-            MMC_Ps = sqrt(en*en - px*px - py*py - pz*pz);
-            EMC_totForSmear = EMC_ISR1 + EMC_ISR2 + EMC_FSR + EMC_P1BS + EMC_P2BS + EMC_P1F + EMC_P2F;
+            EMC_Ps = P1[0]+P2[0];
+            MMC_Ps = TLorentzVector(P1[1]+P2[1], P1[2]+P2[2], P1[3]+P2[3], P1[0]+P2[0]).M();
+            EMC_totForSmear = P1F[0] + P2F[0] + FSR[0] + ISR1[0] + ISR2[0] + P1BS[0] + P1BS[0];
 
             AMC_FSRPs = 4;
-            AMC_FSRPs = std::min(Angle(e1, fsr), AMC_FSRPs);
-            AMC_FSRPs = std::min(Angle(e2, fsr), AMC_FSRPs);
+            if(Rho(fsr)) AMC_FSRPs = std::min(Angle(e1, fsr), AMC_FSRPs);
+            if(Rho(fsr)) AMC_FSRPs = std::min(Angle(e2, fsr), AMC_FSRPs);
 
             if (arbor)
             {
@@ -455,8 +400,8 @@ int main() {
 
     SetStyle();
 
-    Read("result.root", at_most(files("/cefs/higgs/liangh/ETau/reco", ".slcio"), 1));
-
+    //Read("result.root", at_most(files("/cefs/higgs/liangh/ETau/reco", ".slcio"), 1));
+    Read("eeH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe1e1h_X.e0.p0.whizard195", ".slcio"), 10));
 
     return 0;
 }
