@@ -51,7 +51,6 @@ void Draw() {
         htot.GetXaxis()->CenterTitle();
         htot.GetXaxis()->SetTitle("Total Energy (With Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
         htot.Draw();
-        cvs.Print("tot.png");
         cvs.Print("res.pdf(");
     }
 
@@ -60,7 +59,6 @@ void Draw() {
         htot2.GetXaxis()->CenterTitle();
         htot2.GetXaxis()->SetTitle("Total Energy (With Resolution(Photon)=0.085/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
         htot2.Draw();
-        cvs.Print("tot2.png");
         cvs.Print("res.pdf");
     }
 
@@ -69,7 +67,6 @@ void Draw() {
         hfsr.GetXaxis()->CenterTitle();
         hfsr.GetXaxis()->SetTitle("Final State Radiation Energy [GeV]");
         hfsr.Draw();
-        cvs.Print("fsr.png");
         cvs.Print("res.pdf");
     }
     {
@@ -77,7 +74,6 @@ void Draw() {
         hbs.GetXaxis()->CenterTitle();
         hbs.GetXaxis()->SetTitle("Bresstrahlung Energy [GeV]");
         hbs.Draw();
-        cvs.Print("bs.png");
         cvs.Print("res.pdf");
     }
     {
@@ -85,7 +81,6 @@ void Draw() {
         hisr.GetXaxis()->CenterTitle();
         hisr.GetXaxis()->SetTitle("Initial State Radiation Energy [GeV]");
         hisr.Draw();
-        cvs.Print("isr.png");
         cvs.Print("res.pdf");
     }
 
@@ -94,7 +89,6 @@ void Draw() {
         hp.GetXaxis()->CenterTitle();
         hp.GetXaxis()->SetTitle("All Photons Energy [GeV]");
         hp.Draw();
-        cvs.Print("photon.png");
         cvs.Print("res.pdf)");
     }
 }
