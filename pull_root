@@ -1,0 +1,1 @@
+scp liangh@lxslc6.ihep.ac.cn:~/project/ETau/build/*.root .
