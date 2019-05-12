@@ -5,6 +5,105 @@
 #include <TCanvas.h>
 #include <TLorentzVector.h>
 #include <TLegend.h>
+#include <TGraph.h>
+#include <TF1.h>
+
+double eff_width(TH1 *h, double *err = NULL) {
+
+        //                                 1
+        // eff_width =      ----------------------------------
+        //                  integrate  2 sqrt(pi) (p.d.f)^2 dx
+
+        int n = h->GetNbinsX();
+        double sum = 0;
+        double sum2 = 0;
+        for(int i = 1; i <= n; ++i) {
+            double pdfw = h->GetBinContent(i); 
+            double w = h->GetBinWidth(i); 
+            sum += pdfw;
+            sum2 += pdfw*pdfw / w; 
+        
+        }
+        double result = sum*sum / ( 2*sqrt(3.14159265359)*sum2);
+
+
+        if(err) {
+
+            double sum = 0;
+            double sum2 = 0;
+            double sum3 = 0;
+            for (int i = 1; i <= n; ++i)
+            {
+                double n = h->GetBinContent(i);
+                double w = h->GetBinWidth(i);
+                sum += n;
+                sum2 += n*n/w;
+                sum3 += n*n*n/(w*w);
+            }
+            double e = 2/(sum2*sum)*sqrt(sum*(sum3*sum-sum2*sum2));
+            *err = e * result;
+        }
+
+
+        return result;
+}
+
+double HalfWidth(TH1 *h) {
+        double mean = h->GetMean();
+        double tot = h->Integral(1, h->GetNbinsX());
+        double width = 0;
+        for(int left = 1; left <= h->GetNbinsX(); ++left)
+        {
+            double cnt = 0;
+            double lx = h->GetBinLowEdge(left);
+            for (int right = left; left <= h->GetNbinsX(); ++right)
+            {
+                cnt += h->GetBinContent(right);
+                if(cnt >= tot*0.6278) {
+                    double rx = h->GetBinLowEdge(right);
+                    double remain = cnt - tot*0.6278;
+                    rx += std::max(1., remain / h->GetBinContent(right)) * h->GetBinWidth(right);
+                    if(left == 1) width = rx - lx;
+                    else width = std::min(width, rx - lx);
+                    break;
+                }
+            }
+        }
+        return width;
+}
+
+
+
+#include <cmath>
+
+// see math/mathcore/src/PdfFuncMathCore.cxx in ROOT 6.x
+double crystalball_function(double x, double alpha, double n, double sigma, double mean) {
+  // evaluate the crystal ball function
+  if (sigma < 0.)     return 0.;
+  double z = (x - mean)/sigma;
+  if (alpha < 0) z = -z;
+  double abs_alpha = std::abs(alpha);
+  // double C = n/abs_alpha * 1./(n-1.) * std::exp(-alpha*alpha/2.);
+  // double D = std::sqrt(M_PI/2.)*(1.+ROOT::Math::erf(abs_alpha/std::sqrt(2.)));
+  // double N = 1./(sigma*(C+D));
+  if (z  > - abs_alpha)
+    return std::exp(- 0.5 * z * z);
+  else {
+    //double A = std::pow(n/abs_alpha,n) * std::exp(-0.5*abs_alpha*abs_alpha);
+    double nDivAlpha = n/abs_alpha;
+    double AA =  std::exp(-0.5*abs_alpha*abs_alpha);
+    double B = nDivAlpha -abs_alpha;
+    double arg = nDivAlpha/(B-z);
+    return AA * std::pow(arg,n);
+  }
+}
+
+double crystalball_function(const double *x, const double *p) {
+  // if ((!x) || (!p)) return 0.; // just a precaution
+  // [Constant] * ROOT::Math::crystalball_function(x, [Alpha], [N], [Sigma], [Mean])
+  return (p[0] * crystalball_function(x[0], p[3], p[4], p[2], p[1]));
+}
+
 
 double isr1[4];
 double isr2[4];
@@ -84,6 +183,29 @@ void Plot(char const *name) {
     TH1D hrecEB2("","", 200, 120, 140);
     TH1D hrecEB3("","", 200, 120, 140);
 
+
+    if(0) {
+        TH1D test("", "", 200, 120, 140);
+        gRandom->SetSeed(5195);
+        gRandom->Gaus();
+        gRandom->Gaus();
+        gRandom->Gaus();
+        for (int i = 0; i < 10000; ++i)
+            test.Fill(gRandom->Gaus(125, 2));
+        double r, e;
+        r = eff_width(&test, &e);
+        printf("eff width %f +- %f\n", r, e);
+    }
+
+    int Nbins = 200;
+    TH1D *hrecEBs[10];
+  
+    for(int i =0; i < sizeof(hrecEBs)/sizeof(void*); ++i) {
+        hrecEBs[i] = new TH1D("", "", Nbins, 120, 140);
+    }
+
+    double da = 0.02;
+
     TH1D hp("","",100, 0, 50);
     TH1D hfsr("","",100, 0, 50);
     TH1D hbs("","",100, 0, 25);
@@ -91,6 +213,7 @@ void Plot(char const *name) {
     for (int i = 0; i < (int)tree->GetEntries(); ++i)
     {
         tree->GetEntry(i);
+        //if(i%2 == 0) continue;
 
         hp.Fill(isr1[0] + isr2[0] + fsr[0] + bs1[0] + bs2[0]);
         hfsr.Fill(fsr[0]);
@@ -98,6 +221,7 @@ void Plot(char const *name) {
         hisr.Fill(isr1[0] + isr2[0]);
 
         {
+
 
             Smear(0.17);
 
@@ -122,9 +246,6 @@ void Plot(char const *name) {
             hrecE.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
 
-
-
-
             Smear(0.05);
             en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
             px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
@@ -139,6 +260,14 @@ void Plot(char const *name) {
             pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
             hrecEB3.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
+            for(int i = 0; i < sizeof(hrecEBs)/sizeof(void*); ++i) {
+                Smear(i*da);
+                en = e1_[0] + e2_[0] + bs1_[0] + bs2_[0];
+                px = e1_[1] + e2_[1] + bs1_[1] + bs2_[1];
+                py = e1_[2] + e2_[2] + bs1_[2] + bs2_[2];
+                pz = e1_[3] + e2_[3] + bs1_[3] + bs2_[3];
+                hrecEBs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+            }
         }
     }
 
@@ -167,6 +296,58 @@ void Plot(char const *name) {
 
 
         cvs.Print("res.pdf(");
+    }
+
+    {
+        TCanvas cvs;
+        TGraph gr;
+        for (int i = 0; i < sizeof(hrecEBs) / sizeof(void*); ++i)
+        {
+            TH1D *h = hrecEBs[i];
+            //gr.SetPoint(gr.GetN(), i * da, HalfWidth(h));
+            //gr.SetPoint(gr.GetN(), i * da, eff_width(hrecEBs[i]));
+            
+	    //double r, e;
+            //r = eff_width(hrecEBs[i], &e);
+            //printf("%f +- %f\n", r, e);
+            
+	    if (i == 0)
+            {
+
+                TF1 *ff = new TF1("", crystalball_function, 120, 140, 5);
+                ff->SetParNames("Constant", "Mean", "Sigma", "Alpha", "N");
+
+                double max_ = h->GetMaximum();
+                ff->SetParameter(0, max_);
+                ff->SetParameter(1, 125);
+                ff->SetParameter(2, 1);
+                ff->SetParameter(3, 1);
+                ff->SetParameter(4, 1);
+
+                h->Fit(ff);
+                TCanvas cvs;
+                h->Draw();
+                char b[100];
+                sprintf(b, "TryCrystallball%f.png", i * da);
+                cvs.Print(b);
+            }
+
+	    if(1) {
+	    	TF1 *ff = new TF1("", "gaus(0)", 120, 126);	
+
+		h->Fit(ff, "R");
+            	gr.SetPoint(gr.GetN(), i * da, ff->GetParameter(2));
+                
+		TCanvas cvs;
+                h->Draw();
+                char b[100];
+                sprintf(b, "TryGaus%f.png", i * da);
+                cvs.Print(b);
+      }
+
+        }
+        gr.Draw("APC");
+        cvs.Print("res.pdf");
     }
 
     {

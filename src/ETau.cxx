@@ -401,7 +401,7 @@ int main() {
     SetStyle();
 
     //Read("result.root", at_most(files("/cefs/higgs/liangh/ETau/reco", ".slcio"), 1));
-    Read("eeH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe1e1h_X.e0.p0.whizard195", ".slcio"), 10));
+    Read("eeH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe1e1h_X.e0.p0.whizard195", ".slcio"), 100));
 
     return 0;
 }
