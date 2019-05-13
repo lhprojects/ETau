@@ -64,6 +64,43 @@ bool BeforeECal(double const *r) {
     return false;
 }
 
+bool BeforeECal2(double const *r) {
+    double rho = sqrt(r[0]*r[0] + r[1]*r[1]);
+    if(rho < 2000 && fabs(r[2]) < 2500) {
+        return true;
+    }
+    return false;
+}
+
+void CollectBS2(double *rx, double *ry, double *rz, double *en, int &n, int nmax, MCParticle *elec) {
+
+    if(!elec || abs(elec->getPDG()) != 11) return;
+    if(!BeforeECal2(elec->getEndpoint())) {
+        return;
+    }
+    for(int d = 0; d < (int)elec->getDaughters().size(); ++d) {
+        MCParticle *dau = elec->getDaughters()[d];
+        if(abs(dau->getPDG()) == 22) { // gamma and before Ecal
+            //printf("%d %f %f %f\n", dau->getPDG(), dau->getVertex()[0], dau->getVertex()[1], dau->getVertex()[2]);
+            if(BeforeECal2(dau->getVertex())) {
+                if(n < nmax-1) {
+                    en[n] += dau->getEnergy();
+                    rx[n] = dau->getVertex()[0];
+                    ry[n] = dau->getVertex()[1];
+                    rz[n] = dau->getVertex()[2];
+                    printf("photon %f %f %f\n", dau->getVertex()[0], dau->getVertex()[1], dau->getVertex()[2]);
+                    n += 1;
+                }
+            }
+        } else if(abs(dau->getPDG()) == 11 && BeforeECal2(dau->getVertex())) {
+            CollectBS2(rx, ry, rz, en, n, nmax, dau);
+            printf("electr %f %f %f\n", dau->getVertex()[0], dau->getVertex()[1], dau->getVertex()[2]);
+        }
+    }
+
+}
+
+
 void CollectBS(double *p4, double &n, double *p4Elec, MCParticle *elec) {
 
     if(!elec || abs(elec->getPDG()) != 11) return;
@@ -88,8 +125,7 @@ void CollectBS(double *p4, double &n, double *p4Elec, MCParticle *elec) {
             }
         } else if(abs(dau->getPDG()) == 11 && BeforeECal(dau->getVertex())) {
             CollectBS(p4, n, p4Elec, dau);
-        }
-
+        } 
     }
 
 }
@@ -149,6 +185,13 @@ void Read(std::string rf, std::vector<std::string> const &files) {
     double P1BS[4];  // photon of bremsstrahlung
     double P2BS[4];
 
+
+    int32_t NMC_PsBS;
+    double RxMC_PsBS[100];
+    double RyMC_PsBS[100];
+    double RzMC_PsBS[100];
+    double EMC_PsBS[100];
+
     double EMC_Ps;
     double MMC_Ps;
  
@@ -178,6 +221,12 @@ void Read(std::string rf, std::vector<std::string> const &files) {
     tree.Branch("P2F", P2F, "P2F[4]/D");
     tree.Branch("P1BS", P1BS, "P1BS[4]/D");
     tree.Branch("P2BS", P2BS, "P2BS[4]/D");
+
+    tree.Branch("NMC_PsBS", &NMC_PsBS, "NMC_PsBS/I");
+    tree.Branch("RxMC_PsBS", &RxMC_PsBS, "RxMC_PsBS[NMC_PsBS]/D");
+    tree.Branch("RyMC_PsBS", &RyMC_PsBS, "RyMC_PsBS[NMC_PsBS]/D");
+    tree.Branch("RzMC_PsBS", &RzMC_PsBS, "RzMC_PsBS[NMC_PsBS]/D");
+    tree.Branch("EMC_PsBS", &EMC_PsBS, "EMC_PsBS[NMC_PsBS]/D");
 
     tree.Branch("EMC_Ps", &EMC_Ps, "EMC_Ps/D");
     tree.Branch("MMC_Ps", &MMC_Ps, "MMC_Ps/D");
@@ -219,6 +268,8 @@ void Read(std::string rf, std::vector<std::string> const &files) {
 
             NMC_P1BS = 0;
             NMC_P2BS = 0;
+            NMC_PsBS = 0;
+
             EMC_Ps = 0;
             MMC_Ps = 0;
 
@@ -260,6 +311,7 @@ void Read(std::string rf, std::vector<std::string> const &files) {
                         P1[0] = rmcp->getEnergy();
                         for(int i = 1; i < 4; ++i) P1[i] = rmcp->getMomentum()[i-1];
                         CollectBS(P1BS, NMC_P1BS, P1F, rmcp);
+                        CollectBS2(RxMC_PsBS, RyMC_PsBS, RzMC_PsBS, EMC_PsBS, NMC_PsBS, 100, rmcp);
                     }
                     else if (pdg == -11)
                     {
@@ -271,6 +323,7 @@ void Read(std::string rf, std::vector<std::string> const &files) {
                         P2[0] = rmcp->getEnergy();
                         for (int i = 1; i < 4; ++i) P2[i] = rmcp->getMomentum()[i-1];
                         CollectBS(P2BS, NMC_P2BS, P2F, rmcp);
+                        CollectBS2(RxMC_PsBS, RyMC_PsBS, RzMC_PsBS, EMC_PsBS, NMC_PsBS , 100, rmcp);
                     }
                     else if (pdg == 22 && i == 0)
                     {
@@ -401,7 +454,7 @@ int main() {
     SetStyle();
 
     //Read("result.root", at_most(files("/cefs/higgs/liangh/ETau/reco", ".slcio"), 1));
-    Read("eeH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe1e1h_X.e0.p0.whizard195", ".slcio"), 100));
+    Read("eeH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe1e1h_X.e0.p0.whizard195", ".slcio"), 1));
 
     return 0;
 }

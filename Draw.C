@@ -123,10 +123,9 @@ double bs1_[4];
 double bs2_[4];
 
 
-void SmearPhoton(double *to, double *from, double a) {
+void SmearPhoton(double *to, double *from, double a, double r) {
 
     if(from[0] > 0) {
-        double r = gRandom->Gaus();
         to[0] = from[0] * (1 + a / sqrt(from[0]) * r);
         to[1] = from[1] * (1 + a / sqrt(from[0]) * r);
         to[2] = from[2] * (1 + a / sqrt(from[0]) * r);
@@ -139,21 +138,26 @@ void SmearPhoton(double *to, double *from, double a) {
     }
 }
 
+
+double rnd[7];
+
+void SetRnd() {
+    for(int i = 0; i < 7; ++i)
+        rnd[i] = gRandom->Gaus();
+}
 void Smear(double a) {
 
-    double r4 = gRandom->Gaus();
-    double r5 = gRandom->Gaus();
 
-    SmearPhoton(isr1_, isr1, a);
-    SmearPhoton(isr2_, isr2, a);
-    SmearPhoton(fsr_, fsr, a);
-    SmearPhoton(bs1_, bs1, a);
-    SmearPhoton(bs2_, bs2, a);
+    SmearPhoton(isr1_, isr1, a, rnd[0]);
+    SmearPhoton(isr2_, isr2, a, rnd[1]);
+    SmearPhoton(fsr_, fsr, a, rnd[2]);
+    SmearPhoton(bs1_, bs1, a, rnd[3]);
+    SmearPhoton(bs2_, bs2, a, rnd[4]);
 
     for (int i = 0; i < 4; ++i)
     {
-        e1_[i] = e1[i] * (1 + r4 * 5E-3);
-        e2_[i] = e2[i] * (1 + r5 * 5E-3);
+        e1_[i] = e1[i] * (1 + rnd[5] * 5E-3);
+        e2_[i] = e2[i] * (1 + rnd[6] * 5E-3);
     }
 }
 
@@ -180,22 +184,11 @@ void Plot(char const *name) {
     TH1D hrecE("","", 200, 120, 140);
     TH1D hrecEB("","", 200, 120, 140);
 
+    TH1D hrecEB1("","", 200, 120, 140);
     TH1D hrecEB2("","", 200, 120, 140);
     TH1D hrecEB3("","", 200, 120, 140);
-
-
-    if(0) {
-        TH1D test("", "", 200, 120, 140);
-        gRandom->SetSeed(5195);
-        gRandom->Gaus();
-        gRandom->Gaus();
-        gRandom->Gaus();
-        for (int i = 0; i < 10000; ++i)
-            test.Fill(gRandom->Gaus(125, 2));
-        double r, e;
-        r = eff_width(&test, &e);
-        printf("eff width %f +- %f\n", r, e);
-    }
+    TH1D hrecEB4("","", 200, 120, 140);
+    TH1D hrecEB5("","", 200, 120, 140);
 
     int Nbins = 200;
     TH1D *hrecEBs[10];
@@ -220,6 +213,7 @@ void Plot(char const *name) {
         hbs.Fill(bs1[0] + bs2[0]);
         hisr.Fill(isr1[0] + isr2[0]);
 
+        SetRnd();
         {
 
 
@@ -246,6 +240,13 @@ void Plot(char const *name) {
             hrecE.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
 
+            Smear(0.00);
+            en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
+            hrecEB1.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+
             Smear(0.05);
             en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
             px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
@@ -253,12 +254,27 @@ void Plot(char const *name) {
             pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
             hrecEB2.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
-            Smear(0.5);
+
+            Smear(0.10);
             en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
             px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
             py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
             pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
             hrecEB3.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+
+            Smear(0.20);
+            en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
+            hrecEB4.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+
+            Smear(0.40);
+            en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
+            hrecEB5.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
             for(int i = 0; i < sizeof(hrecEBs)/sizeof(void*); ++i) {
                 Smear(i*da);
@@ -273,25 +289,33 @@ void Plot(char const *name) {
 
     {
         TCanvas cvs;
-        hrecEB.GetXaxis()->CenterTitle();
-        hrecEB.GetXaxis()->SetTitle("Recoil(elec.+bream.) (Resolution(electron) = 0.5%) [GeV]");
-        hrecEB.SetMaximum(hrecEB.GetMaximum()*1.4);
-        hrecEB.SetLineColor(kBlue);
+        hrecEB1.GetXaxis()->CenterTitle();
+        hrecEB1.GetXaxis()->SetTitle("Recoil(elec.+bream.) (Resolution(electron) = 0.5%) [GeV]");
+        hrecEB1.SetMaximum(hrecEB.GetMaximum()*1.4);
+        hrecEB1.SetLineColor(kBlue);
         hrecEB2.SetLineColor(kRed);
         hrecEB3.SetLineColor(kGreen);
+        hrecEB4.SetLineColor(kViolet);
+        hrecEB5.SetLineColor(kBlack);
         
-        hrecEB.SetStats(false);
-        hrecEB.Draw();
+        hrecEB1.SetStats(false);
+        hrecEB1.Draw();
+
+        hrecEB1.Draw("SAME");
         hrecEB2.Draw("SAME");
         hrecEB3.Draw("SAME");
+        hrecEB4.Draw("SAME");
+        hrecEB5.Draw("SAME");
 
 
         TLegend leg(0.5, 0.65, 0.89, 0.89);
         leg.SetBorderSize(0);
         leg.SetFillColor(0);
+        leg.AddEntry(&hrecEB1, "Resolution(photon)=0.00/#sqrt{E}");
         leg.AddEntry(&hrecEB2, "Resolution(photon)=0.05/#sqrt{E}");
-        leg.AddEntry(&hrecEB, "Resolution(photon)=0.17/#sqrt{E}");
-        leg.AddEntry(&hrecEB3, "Resolution(phton)=0.5/#sqrt{E}");
+        leg.AddEntry(&hrecEB3, "Resolution(phton)=0.10/#sqrt{E}");
+        leg.AddEntry(&hrecEB4, "Resolution(phton)=0.20/#sqrt{E}");
+        leg.AddEntry(&hrecEB5, "Resolution(phton)=0.40/#sqrt{E}");
         leg.Draw();
 
 
@@ -301,17 +325,17 @@ void Plot(char const *name) {
     {
         TCanvas cvs;
         TGraph gr;
-        for (int i = 0; i < sizeof(hrecEBs) / sizeof(void*); ++i)
+        for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
         {
             TH1D *h = hrecEBs[i];
             //gr.SetPoint(gr.GetN(), i * da, HalfWidth(h));
             //gr.SetPoint(gr.GetN(), i * da, eff_width(hrecEBs[i]));
-            
-	    //double r, e;
+
+            //double r, e;
             //r = eff_width(hrecEBs[i], &e);
             //printf("%f +- %f\n", r, e);
-            
-	    if (i == 0)
+
+            if (i == 0)
             {
 
                 TF1 *ff = new TF1("", crystalball_function, 120, 140, 5);
@@ -332,20 +356,23 @@ void Plot(char const *name) {
                 cvs.Print(b);
             }
 
-	    if(1) {
-	    	TF1 *ff = new TF1("", "gaus(0)", 120, 126);	
+            if (1)
+            {
+                TF1 *ff = new TF1("", "gaus(0)", 120, 126);
+                h->Fit(ff, "R");
+                gr.SetPoint(gr.GetN(), i * da, 100*ff->GetParameter(2)/125);
 
-		h->Fit(ff, "R");
-            	gr.SetPoint(gr.GetN(), i * da, ff->GetParameter(2));
-                
-		TCanvas cvs;
+                TCanvas cvs;
                 h->Draw();
                 char b[100];
                 sprintf(b, "TryGaus%f.png", i * da);
                 cvs.Print(b);
-      }
-
+            }
         }
+        gr.GetXaxis()->CenterTitle();
+        gr.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
+        gr.GetYaxis()->CenterTitle();
+        gr.GetYaxis()->SetTitle("Resolution of Recoil Mass Against Elec. + BS [%]");
         gr.Draw("APC");
         cvs.Print("res.pdf");
     }
@@ -353,8 +380,16 @@ void Plot(char const *name) {
     {
         TCanvas cvs;
         hrec.GetXaxis()->CenterTitle();
-        hrec.GetXaxis()->SetTitle("Recoil(elec.+photons) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
+        hrec.GetXaxis()->SetTitle("Recoil(elec.+All photons) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
         hrec.Draw();
+        cvs.Print("res.pdf");
+    }
+    {
+        TCanvas cvs;
+        hrecEB.GetXaxis()->CenterTitle();
+        hrecEB.GetXaxis()->SetTitle("Recoil(elec.+BS) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
+        hrecEB.SetStats(true);
+        hrecEB.Draw();
         cvs.Print("res.pdf");
     }
     {
