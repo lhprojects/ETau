@@ -107,7 +107,8 @@ double crystalball_function(const double *x, const double *p) {
 
 double isr1[4];
 double isr2[4];
-double fsr[4];
+double fsr1[4];
+double fsr2[4];
 double e1[4];
 double e2[4];
 double bs1[4];
@@ -116,7 +117,8 @@ double bs2[4];
 
 double isr1_[4];
 double isr2_[4];
-double fsr_[4];
+double fsr1_[4];
+double fsr2_[4];
 double e1_[4];
 double e2_[4];
 double bs1_[4];
@@ -139,10 +141,10 @@ void SmearPhoton(double *to, double *from, double a, double r) {
 }
 
 
-double rnd[7];
+double rnd[8];
 
 void SetRnd() {
-    for(int i = 0; i < 7; ++i)
+    for(int i = 0; i < 8; ++i)
         rnd[i] = gRandom->Gaus();
 }
 void Smear(double a) {
@@ -150,18 +152,19 @@ void Smear(double a) {
 
     SmearPhoton(isr1_, isr1, a, rnd[0]);
     SmearPhoton(isr2_, isr2, a, rnd[1]);
-    SmearPhoton(fsr_, fsr, a, rnd[2]);
-    SmearPhoton(bs1_, bs1, a, rnd[3]);
-    SmearPhoton(bs2_, bs2, a, rnd[4]);
+    SmearPhoton(fsr1_, fsr1, a, rnd[2]);
+    SmearPhoton(fsr2_, fsr2, a, rnd[3]);
+    SmearPhoton(bs1_, bs1, a, rnd[4]);
+    SmearPhoton(bs2_, bs2, a, rnd[5]);
 
     for (int i = 0; i < 4; ++i)
     {
-        e1_[i] = e1[i] * (1 + rnd[5] * 5E-3);
-        e2_[i] = e2[i] * (1 + rnd[6] * 5E-3);
+        e1_[i] = e1[i] * (1 + rnd[6] * 5E-3);
+        e2_[i] = e2[i] * (1 + rnd[7] * 5E-3);
     }
 }
 
-void Plot(char const *name) {
+void Plot(char const *name, char const *output) {
 
 
     TFile *f = new TFile(name);
@@ -170,7 +173,8 @@ void Plot(char const *name) {
     double Ecms;
     tree->SetBranchAddress("ISR1", isr1);
     tree->SetBranchAddress("ISR2", isr2);
-    tree->SetBranchAddress("FSR", fsr);
+    tree->SetBranchAddress("FSR1", fsr1);
+    tree->SetBranchAddress("FSR2", fsr2);
     tree->SetBranchAddress("P1F", e1);
     tree->SetBranchAddress("P2F", e2);
     tree->SetBranchAddress("P1BS", bs1);
@@ -208,8 +212,8 @@ void Plot(char const *name) {
         tree->GetEntry(i);
         //if(i%2 == 0) continue;
 
-        hp.Fill(isr1[0] + isr2[0] + fsr[0] + bs1[0] + bs2[0]);
-        hfsr.Fill(fsr[0]);
+        hp.Fill(isr1[0] + isr2[0] + fsr1[0] + fsr2[0] + bs1[0] + bs2[0]);
+        hfsr.Fill(fsr1[0] + fsr2[0]);
         hbs.Fill(bs1[0] + bs2[0]);
         hisr.Fill(isr1[0] + isr2[0]);
 
@@ -219,18 +223,18 @@ void Plot(char const *name) {
 
             Smear(0.17);
 
-            double en = e1_[0] + e2_[0] + isr1_[0] + isr2_[0] + fsr_[0] + bs1_[0] + bs2_[0];
-            double px = e1_[1] + e2_[1] + isr1_[1] + isr2_[1] + fsr_[1] + bs1_[1] + bs2_[1];
-            double py = e1_[2] + e2_[2] + isr1_[2] + isr2_[2] + fsr_[2] + bs1_[2] + bs2_[2];
-            double pz = e1_[3] + e2_[3] + isr1_[3] + isr2_[3] + fsr_[3] + bs1_[3] + bs2_[3];
+            double en = e1_[0] + e2_[0] + isr1_[0] + isr2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+            double px = e1_[1] + e2_[1] + isr1_[1] + isr2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+            double py = e1_[2] + e2_[2] + isr1_[2] + isr2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+            double pz = e1_[3] + e2_[3] + isr1_[3] + isr2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
 
             htot.Fill(TLorentzVector(px, py, pz, en).M());
             hrec.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
-            en = e1_[0] + e2_[0] + fsr_[0] + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1] + fsr_[1] + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2] + fsr_[2] + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3] + fsr_[3] + bs1_[3] + bs2_[3];
+            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
             en = e1_[0] + e2_[0];
@@ -241,47 +245,48 @@ void Plot(char const *name) {
 
 
             Smear(0.00);
-            en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
+            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB1.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
             Smear(0.05);
-            en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
+            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB2.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
 
             Smear(0.10);
-            en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
+            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB3.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
             Smear(0.20);
-            en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
+            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB4.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
             Smear(0.40);
-            en = e1_[0] + e2_[0]  + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1]  + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2]  + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3]  + bs1_[3] + bs2_[3];
+            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB5.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
-            for(int i = 0; i < sizeof(hrecEBs)/sizeof(void*); ++i) {
-                Smear(i*da);
-                en = e1_[0] + e2_[0] + bs1_[0] + bs2_[0];
-                px = e1_[1] + e2_[1] + bs1_[1] + bs2_[1];
-                py = e1_[2] + e2_[2] + bs1_[2] + bs2_[2];
-                pz = e1_[3] + e2_[3] + bs1_[3] + bs2_[3];
+            for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
+            {
+                Smear(i * da);
+                en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+                px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+                py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+                pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
                 hrecEBs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
             }
         }
@@ -290,7 +295,7 @@ void Plot(char const *name) {
     {
         TCanvas cvs;
         hrecEB1.GetXaxis()->CenterTitle();
-        hrecEB1.GetXaxis()->SetTitle("Recoil(elec.+bream.) (Resolution(electron) = 0.5%) [GeV]");
+        hrecEB1.GetXaxis()->SetTitle("Recoil(elec.+BS+FSR) (Resolution(electron) = 0.5%) [GeV]");
         hrecEB1.SetMaximum(hrecEB.GetMaximum()*1.4);
         hrecEB1.SetLineColor(kBlue);
         hrecEB2.SetLineColor(kRed);
@@ -319,7 +324,7 @@ void Plot(char const *name) {
         leg.Draw();
 
 
-        cvs.Print("res.pdf(");
+        cvs.Print((std::string(output) + ".pdf(").c_str());
     }
 
     {
@@ -372,66 +377,66 @@ void Plot(char const *name) {
         gr.GetXaxis()->CenterTitle();
         gr.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
         gr.GetYaxis()->CenterTitle();
-        gr.GetYaxis()->SetTitle("Resolution of Recoil Mass Against Elec. + BS [%]");
+        gr.GetYaxis()->SetTitle("Resolution of Recoil Mass Against Elec. + BS + FSR[%]");
         gr.Draw("APC");
-        cvs.Print("res.pdf");
+        cvs.Print((std::string(output) + ".pdf").c_str());
     }
 
     {
         TCanvas cvs;
         hrec.GetXaxis()->CenterTitle();
-        hrec.GetXaxis()->SetTitle("Recoil(elec.+All photons) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
+        hrec.GetXaxis()->SetTitle("Recoil(elec.+BS+FSR+ISR) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
         hrec.Draw();
-        cvs.Print("res.pdf");
+        cvs.Print((std::string(output) + ".pdf").c_str());
     }
     {
         TCanvas cvs;
         hrecEB.GetXaxis()->CenterTitle();
-        hrecEB.GetXaxis()->SetTitle("Recoil(elec.+BS) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
+        hrecEB.GetXaxis()->SetTitle("Recoil(elec.+BS+FSR) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
         hrecEB.SetStats(true);
         hrecEB.Draw();
-        cvs.Print("res.pdf");
+        cvs.Print((std::string(output) + ".pdf").c_str());
     }
     {
         TCanvas cvs;
         hrecE.GetXaxis()->CenterTitle();
         hrecE.GetXaxis()->SetTitle("Recoil(elec.) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
         hrecE.Draw();
-        cvs.Print("res.pdf");
-    }
-    {
-        TCanvas cvs;
-        hfsr.GetXaxis()->CenterTitle();
-        hfsr.GetXaxis()->SetTitle("Final State Radiation Energy [GeV]");
-        hfsr.Draw();
-        cvs.Print("res.pdf");
-    }
-    
-    {
-        TCanvas cvs;
-        hbs.GetXaxis()->CenterTitle();
-        hbs.GetXaxis()->SetTitle("Bresstrahlung Energy [GeV]");
-        hbs.Draw();
-        cvs.Print("res.pdf");
+        cvs.Print((std::string(output) + ".pdf").c_str());
     }
     {
         TCanvas cvs;
         hisr.GetXaxis()->CenterTitle();
         hisr.GetXaxis()->SetTitle("Initial State Radiation Energy [GeV]");
         hisr.Draw();
-        cvs.Print("res.pdf");
+        cvs.Print((std::string(output) + ".pdf").c_str());
+    }
+    {
+        TCanvas cvs;
+        hfsr.GetXaxis()->CenterTitle();
+        hfsr.GetXaxis()->SetTitle("Final State Radiation Energy [GeV]");
+        hfsr.Draw();
+        cvs.Print((std::string(output) + ".pdf").c_str());
+    }
+    {
+        TCanvas cvs;
+        hbs.GetXaxis()->CenterTitle();
+        hbs.GetXaxis()->SetTitle("Bresstrahlung Energy [GeV]");
+        hbs.Draw();
+        cvs.Print((std::string(output) + ".pdf").c_str());
     }
 
     {
         TCanvas cvs;
         hp.GetXaxis()->CenterTitle();
-        hp.GetXaxis()->SetTitle("All Photons Energy [GeV]");
+        hp.GetXaxis()->SetTitle("ISR+FSR+BS [GeV]");
         hp.Draw();
-        cvs.Print("res.pdf)");
+        cvs.Print((std::string(output) + ".pdf)").c_str());
     }
 }
 
 
 void Draw() {
-    Plot("eeH.root");
+    Plot("eeH.root", "eeH");
+    Plot("mumuH.root", "mumuH");
 }
