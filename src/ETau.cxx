@@ -477,13 +477,18 @@ std::vector<std::string> at_most(std::vector<std::string> vs, size_t n) {
     return vs;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 
     SetStyle();
+    if(argc == 3) {   
+        std::vector<std::string> src;
+        src.push_back(argv[1]);
+        Read(argv[2], src);
+    } else {
+        Read("eeH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe1e1h_X.e0.p0.whizard195", ".slcio"), 1));
+        Read("mumuH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe2e2h_X.e0.p0.whizard195", ".slcio"), 1));
+    }
 
-    //Read("result.root", at_most(files("/cefs/higgs/liangh/ETau/reco", ".slcio"), 1));
-    Read("eeH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe1e1h_X.e0.p0.whizard195", ".slcio"), 1));
-    Read("mumuH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe2e2h_X.e0.p0.whizard195", ".slcio"), 1));
 
     return 0;
 }

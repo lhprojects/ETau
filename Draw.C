@@ -6,6 +6,7 @@
 #include <TLorentzVector.h>
 #include <TLegend.h>
 #include <TGraph.h>
+#include <TGraphErrors.h>
 #include <TF1.h>
 
 double eff_width(TH1 *h, double *err = NULL) {
@@ -199,9 +200,11 @@ void Plot(char const *name, char const *output) {
 
     int Nbins = 200;
     TH1D *hrecEBs[10];
+    TH1D *hrecEs[10];
   
     for(int i =0; i < sizeof(hrecEBs)/sizeof(void*); ++i) {
         hrecEBs[i] = new TH1D("", "", Nbins, 120, 140);
+        hrecEs[i] = new TH1D("", "", Nbins, 120, 140);
     }
 
     double da = 0.02;
@@ -291,6 +294,11 @@ void Plot(char const *name, char const *output) {
                 py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
                 pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
                 hrecEBs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+                en = e1_[0] + e2_[0];
+                px = e1_[1] + e2_[1];
+                py = e1_[2] + e2_[2];
+                pz = e1_[3] + e2_[3];
+                hrecEs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
             }
         }
     }
@@ -299,7 +307,7 @@ void Plot(char const *name, char const *output) {
         TCanvas cvs;
         hrecEB1.GetXaxis()->CenterTitle();
         hrecEB1.GetXaxis()->SetTitle("Recoil(elec.+BS+FSR) (Resolution(electron) = 0.5%) [GeV]");
-        hrecEB1.SetMaximum(hrecEB.GetMaximum()*1.4);
+        hrecEB1.SetMaximum(hrecEB.GetMaximum()*1.6);
         hrecEB1.SetLineColor(kBlue);
         hrecEB2.SetLineColor(kRed);
         hrecEB3.SetLineColor(kGreen);
@@ -331,24 +339,17 @@ void Plot(char const *name, char const *output) {
     }
 
     {
-        TCanvas cvs;
-        TGraph gr;
+        TGraphErrors gr;
+        TGraphErrors gr2;
         for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
         {
-            TH1D *h = hrecEBs[i];
-            //gr.SetPoint(gr.GetN(), i * da, HalfWidth(h));
-            //gr.SetPoint(gr.GetN(), i * da, eff_width(hrecEBs[i]));
-
-            //double r, e;
-            //r = eff_width(hrecEBs[i], &e);
-            //printf("%f +- %f\n", r, e);
 
             if (i == 0)
             {
 
                 TF1 *ff = new TF1("", crystalball_function, 120, 140, 5);
                 ff->SetParNames("Constant", "Mean", "Sigma", "Alpha", "N");
-
+                TH1D *h = hrecEBs[i];
                 double max_ = h->GetMaximum();
                 ff->SetParameter(0, max_);
                 ff->SetParameter(1, 125);
@@ -366,9 +367,12 @@ void Plot(char const *name, char const *output) {
 
             if (1)
             {
+                TH1D *h = hrecEBs[i];
                 TF1 *ff = new TF1("", "gaus(0)", 120, 126);
                 h->Fit(ff, "R");
-                gr.SetPoint(gr.GetN(), i * da, 100*ff->GetParameter(2)/125);
+                int n = gr.GetN();
+                gr.SetPoint(n, i * da, 100*ff->GetParameter(2)/125);
+                gr.SetPointError(n, 0, 100*ff->GetParError(2)/125);
 
                 TCanvas cvs;
                 h->Draw();
@@ -376,13 +380,43 @@ void Plot(char const *name, char const *output) {
                 sprintf(b, "TryGaus%f.png", i * da);
                 cvs.Print(b);
             }
+            if (1)
+            {
+                TF1 *ff = new TF1("", "gaus(0)", 120, 126);
+                TH1D *h = hrecEs[i];
+                h->Fit(ff, "R");
+                //gr2.SetMaximum(100 * ff->GetParameter(2) / 125 * 1.2);
+                int n = gr2.GetN();
+                gr2.SetPoint(n, i * da, 100 * ff->GetParameter(2) / 125);
+                gr2.SetPointError(n, 0, 100 * ff->GetParError(2) / 125);
+
+                TCanvas cvs;
+                h->Draw();
+                char b[100];
+                sprintf(b, "TryGausE_%f.png", i * da);
+                cvs.Print(b);
+            }
         }
-        gr.GetXaxis()->CenterTitle();
-        gr.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
-        gr.GetYaxis()->CenterTitle();
-        gr.GetYaxis()->SetTitle("Resolution of Recoil Mass Against Elec. + BS + FSR[%]");
-        gr.Draw("APC");
-        cvs.Print((std::string(output) + ".pdf").c_str());
+
+        {
+            TCanvas cvs;
+            gr.GetXaxis()->CenterTitle();
+            gr.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
+            gr.GetYaxis()->CenterTitle();
+            gr.GetYaxis()->SetTitle("Resolution of Recoil Mass Against Lepton + BS + FSR[%]");
+            gr.Draw("ALP");
+            cvs.Print((std::string(output) + ".pdf").c_str());
+        }
+
+        {
+            TCanvas cvs;
+            gr2.GetXaxis()->CenterTitle();
+            gr2.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
+            gr2.GetYaxis()->CenterTitle();
+            gr2.GetYaxis()->SetTitle("Resolution of Recoil Mass Against Lepton [%]");
+            gr2.Draw("ALP");
+            cvs.Print((std::string(output) + ".pdf").c_str());
+        }
     }
 
     {
