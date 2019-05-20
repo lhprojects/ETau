@@ -109,8 +109,8 @@ double isr1[4];
 double isr2[4];
 double fsr1[4];
 double fsr2[4];
-double e1[4];
-double e2[4];
+double E1[4];
+double E2[4];
 double bs1[4];
 double bs2[4];
 
@@ -159,8 +159,8 @@ void Smear(double a) {
 
     for (int i = 0; i < 4; ++i)
     {
-        e1_[i] = e1[i] * (1 + rnd[6] * 5E-3);
-        e2_[i] = e2[i] * (1 + rnd[7] * 5E-3);
+        e1_[i] = (E1[i] - bs1[i]) * (1 + rnd[6] * 5E-3);
+        e2_[i] = (E2[i] - bs2[i]) * (1 + rnd[7] * 5E-3);
     }
 }
 
@@ -175,8 +175,11 @@ void Plot(char const *name, char const *output) {
     tree->SetBranchAddress("ISR2", isr2);
     tree->SetBranchAddress("FSR1", fsr1);
     tree->SetBranchAddress("FSR2", fsr2);
-    tree->SetBranchAddress("P1F", e1);
-    tree->SetBranchAddress("P2F", e2);
+    tree->SetBranchAddress("P1F", E1); // the final state electron
+    tree->SetBranchAddress("P2F", E2);
+    // E1 + fsr1 + E2 + fsr2 + isr1 + isr2 + Higgs = Ecms
+    // E1 = e1 + bs1
+    // E2 = e2 + bs2
     tree->SetBranchAddress("P1BS", bs1);
     tree->SetBranchAddress("P2BS", bs2);
     tree->SetBranchAddress("EMC_cms", &Ecms);

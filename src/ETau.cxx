@@ -54,6 +54,28 @@ std::vector<std::string> files(char const *path, char const *ext) {
     return result;
 }
 
+double Rho(double const *p) {
+    return sqrt(p[0]*p[0] + p[1]*p[1] + p[2]*p[2]);
+}
+double Dot(double const *p1, double const *p2) {
+    return p1[0]*p2[0] + p1[1]*p2[1] + p1[2]*p2[2];
+}
+
+double Angle(double const *p1, double const *p2) {
+
+    double rho1 = Rho(p1);
+    double rho2 = Rho(p2);
+
+    double costheta = Dot(p1, p2)/(rho1*rho2);
+    if(costheta < -1) {
+        costheta = -1;
+    } else if(costheta > 1) {
+        costheta = 1;
+    }
+    double theta = acos(costheta);
+    return theta;
+}
+
 using namespace std;
 
 bool BeforeECal(double const *r) {
@@ -102,73 +124,58 @@ void CollectBS2(double *rx, double *ry, double *rz, double *en, int &n, int nmax
 }
 
 
-void CollectBS(double fsr[], double *bs, double &n, double *p4Elec, MCParticle *elec, int pdg, int level = 0) {
+MCParticle *CollectFSR(double fsr[], MCParticle *part, double pdg, int level = 0) {
 
-    //for(int l = 0; l < level; ++l) printf(" ");
-    //printf("e %d %f %f %f %d\n", elec->getPDG(), elec->getVertex()[0], elec->getVertex()[1], elec->getVertex()[2], elec->getGeneratorStatus());
+    MCParticle *ret = part;
+    //printf("%d %f -> %g \n", level, Rho(part->getVertex()), Rho(part->getEndpoint()));
+    if (Rho(part->getEndpoint()) > 0) {
+        return part;
+    }
+    for (int d = 0; d < (int)part->getDaughters().size(); ++d)
+    {
+        MCParticle *dau = part->getDaughters()[d];
+        if (abs(dau->getPDG()) == 22)
+        {
+            //printf("%d %f\n", level, dau->getEnergy());
+            fsr[0] += dau->getEnergy();
+            fsr[1] += dau->getMomentum()[0];
+            fsr[2] += dau->getMomentum()[1];
+            fsr[3] += dau->getMomentum()[2];
+        }
+        else if (abs(dau->getPDG()) == pdg && dau->getGeneratorStatus() != 0)
+        {
+            ret = CollectFSR(fsr, dau, pdg, level + 1);
+        }
+    }
+    return ret;
+}
+
+void CollectBS(double *bs, double &n, MCParticle *elec, int pdg, int level = 0) {
+
+    //printf("%d~~ %f -> %f\n", level, Rho(elec->getVertex()), Rho(elec->getEndpoint()));
     level += 1;
-    if(!elec || abs(elec->getPDG()) != pdg) return;
+    if(!elec) return;
     if(!BeforeECal(elec->getVertex())) return;
+    bool subElec = BeforeECal(elec->getEndpoint());
 
     for(int d = 0; d < (int)elec->getDaughters().size(); ++d) {
         MCParticle *dau = elec->getDaughters()[d];
         if(abs(dau->getPDG()) == 22) { // gamma and before Ecal
-            //for(int l = 0; l < level; ++l) printf(" ");
-            //printf("g %d %f %f %f %d\n", dau->getPDG(), dau->getVertex()[0], dau->getVertex()[1], dau->getVertex()[2], dau->getGeneratorStatus());
             if (BeforeECal(dau->getVertex()))
             {
-                if(dau->getGeneratorStatus() != 0) {
-                    printf("fsr", dau->getEnergy() );
-                    fsr[0] += dau->getEnergy();
-                    fsr[1] += dau->getMomentum()[0];
-                    fsr[2] += dau->getMomentum()[1];
-                    fsr[3] += dau->getMomentum()[2];                   
-                } else {
-                    n += 1;
-                    bs[0] += dau->getEnergy();
-                    bs[1] += dau->getMomentum()[0];
-                    bs[2] += dau->getMomentum()[1];
-                    bs[3] += dau->getMomentum()[2];
-                }
+                n += 1;
+                bs[0] += dau->getEnergy();
+                bs[1] += dau->getMomentum()[0];
+                bs[2] += dau->getMomentum()[1];
+                bs[3] += dau->getMomentum()[2];
             }
-        } else if(abs(dau->getPDG()) == pdg && BeforeECal(dau->getVertex())) {
-            CollectBS(fsr, bs, n, p4Elec, dau, pdg, level);
+        } else if(subElec && abs(dau->getPDG()) == pdg && BeforeECal(dau->getVertex())) {
+            CollectBS(bs, n, dau, pdg, level);
         }
     }
 
-    //for(int l = 0; l < level; ++l) printf(" ");
-    //printf("final %d\n", !BeforeECal(elec->getEndpoint()));
-    if (!BeforeECal(elec->getEndpoint()))
-    {
-        p4Elec[0] += elec->getEnergy();
-        p4Elec[1] += elec->getMomentum()[0];
-        p4Elec[2] += elec->getMomentum()[1];
-        p4Elec[3] += elec->getMomentum()[2];
-    }
-
 }
 
-double Rho(double const *p) {
-    return sqrt(p[0]*p[0] + p[1]*p[1] + p[2]*p[2]);
-}
-double Dot(double const *p1, double const *p2) {
-    return p1[0]*p2[0] + p1[1]*p2[1] + p1[2]*p2[2];
-}
-
-double Angle(double const *p1, double const *p2) {
-
-    double rho1 = Rho(p1);
-    double rho2 = Rho(p2);
-
-    double costheta = Dot(p1, p2)/(rho1*rho2);
-    if(costheta < -1) {
-        costheta = -1;
-    } else if(costheta > 1) {
-        costheta = 1;
-    }
-    double theta = acos(costheta);
-    return theta;
-}
 
 
 MCParticle *GetRealParticle(MCParticle *mcp) {
@@ -177,9 +184,11 @@ MCParticle *GetRealParticle(MCParticle *mcp) {
     if(mcp->getDaughters().size()==1 && mcp->getDaughters()[0]->getPDG() == pdg) mcp = mcp->getDaughters()[0];
     if(mcp->getDaughters().size()==1 && mcp->getDaughters()[0]->getPDG() == pdg) mcp = mcp->getDaughters()[0];
     if(mcp->getDaughters().size()==1 && mcp->getDaughters()[0]->getPDG() == 94) {
-        mcp = mcp->getDaughters()[0];
-        for(int i = 0; i < (int)mcp->getDaughters().size(); ++i) {
-            if(mcp->getDaughters()[i]->getPDG() == pdg) {
+        mcp = mcp->getDaughters()[0]; // pdg94
+        for (int i = 0; i < (int)mcp->getDaughters().size(); ++i)
+        {
+            if (mcp->getDaughters()[i]->getPDG() == pdg)
+            {
                 mcp = mcp->getDaughters()[i];
                 break;
             }
@@ -193,6 +202,7 @@ void Read(std::string rf, std::vector<std::string> const &files) {
     TTree tree("evts", "evts");
 
     // Monte Carlo Truth
+    double idx = 0;
     double P1[4]; // original electron
     double P2[4];
     double FSR1[4];
@@ -218,8 +228,8 @@ void Read(std::string rf, std::vector<std::string> const &files) {
     double NMC_P2BS;
 
     double EMC_cms;
+    double EMC_H;
     double EMC_totForSmear;
-    double AMC_FSRPs;
     double N_PDG94;
 
 
@@ -231,6 +241,7 @@ void Read(std::string rf, std::vector<std::string> const &files) {
 
 
 
+    tree.Branch("id", &idx, "id/D");
     tree.Branch("P1", P1, "P1[4]/D");
     tree.Branch("P2", P2, "P2[4]/D");
     tree.Branch("FSR1", FSR1, "FSR1[4]/D");
@@ -253,9 +264,9 @@ void Read(std::string rf, std::vector<std::string> const &files) {
     tree.Branch("NMC_P1BS", &NMC_P1BS, "NMC_P1BS/D");
     tree.Branch("NMC_P2BS", &NMC_P2BS, "NMC_P2BS/D");
 
+    tree.Branch("EMC_H", &EMC_H, "EMC_H/D");
     tree.Branch("EMC_cms", &EMC_cms, "EMC_cms/D");
     tree.Branch("EMC_totForSmear", &EMC_totForSmear, "EMC_totForSmear/D");
-    tree.Branch("AMC_FSRPs", &AMC_FSRPs, "AMC_FSRPs/D");
 
 
 
@@ -275,7 +286,8 @@ void Read(std::string rf, std::vector<std::string> const &files) {
         lcReader->open(files[f]);
         for(LCEvent *evt; (evt = lcReader->readNextEvent()); )
         {
-
+            //printf("index %d\n", (int)idx);
+            //if(idx > 100) break;
             for(int i = 0; i < 4; ++i) P1[i] = 0;
             for(int i = 0; i < 4; ++i) P2[i] = 0;
             for(int i = 0; i < 4; ++i) FSR1[i] = 0;
@@ -294,19 +306,15 @@ void Read(std::string rf, std::vector<std::string> const &files) {
             EMC_Ps = 0;
             MMC_Ps = 0;
 
+            EMC_H = 0;
             EMC_cms = 0;
             EMC_totForSmear = 0;
-            AMC_FSRPs = 0;
             N_PDG94 = 0;
 
             E_tot = 0;
             M_tot = 0;  
             E_Ps = 0;
             M_Ps = 0;
-
-            double e1[3]= {};
-            double e2[3] = {};
-            double fsr[3] = {};
 
             LCCollection *mccol = evt->getCollection("MCParticle");
             for (int i = 0; i < (int)mccol->getNumberOfElements(); ++i)
@@ -324,27 +332,33 @@ void Read(std::string rf, std::vector<std::string> const &files) {
 
                     if (pdg == 11 || pdg == 13)
                     {
-                        e1[0] = mcp->getMomentum()[0];
-                        e1[1] = mcp->getMomentum()[1];
-                        e1[2] = mcp->getMomentum()[2];
-                        MCParticle *rmcp = GetRealParticle(mcp);
-                        
+
+                        MCParticle *rmcp = GetRealParticle(mcp);                      
                         P1[0] = rmcp->getEnergy();
                         for(int i = 1; i < 4; ++i) P1[i] = rmcp->getMomentum()[i-1];
-                        CollectBS(FSR1, P1BS, NMC_P1BS, P1F, rmcp, abs(pdg));
-                        CollectBS2(RxMC_PsBS, RyMC_PsBS, RzMC_PsBS, EMC_PsBS, NMC_PsBS, 100, rmcp, abs(pdg));
+
+                        rmcp = CollectFSR(FSR1, rmcp, abs(pdg));
+                        P1F[0] = rmcp->getEnergy();
+                        for(int i = 1; i < 4; ++i) P1F[i] = rmcp->getMomentum()[i-1];
+
+                        if(fabs(FSR1[0] + P1F[0] - P1[0])>0.5) {
+                            printf("%f %f %f %f ~~\n", idx, FSR1[0], P1F[0], P1[0]);
+                        }
+                        CollectBS(P1BS, NMC_P1BS, rmcp, abs(pdg));
+                        //CollectBS2(RxMC_PsBS, RyMC_PsBS, RzMC_PsBS, EMC_PsBS, NMC_PsBS, 20, rmcp, abs(pdg));
                     }
                     else if (pdg == -11 || pdg == -13)
                     {
-                        e2[0] = mcp->getMomentum()[0];
-                        e2[1] = mcp->getMomentum()[1];
-                        e2[2] = mcp->getMomentum()[2];
                         MCParticle *rmcp = GetRealParticle(mcp);
-
                         P2[0] = rmcp->getEnergy();
                         for (int i = 1; i < 4; ++i) P2[i] = rmcp->getMomentum()[i-1];
-                        CollectBS(FSR2, P2BS, NMC_P2BS, P2F, rmcp, abs(pdg));
-                        CollectBS2(RxMC_PsBS, RyMC_PsBS, RzMC_PsBS, EMC_PsBS, NMC_PsBS , 100, rmcp, abs(pdg));
+
+                        rmcp = CollectFSR(FSR2, rmcp, abs(pdg));
+                        P2F[0] = rmcp->getEnergy();
+                        for(int i = 1; i < 4; ++i) P2F[i] = rmcp->getMomentum()[i-1];
+
+                        CollectBS(P2BS, NMC_P2BS, rmcp, abs(pdg));
+                        //CollectBS2(RxMC_PsBS, RyMC_PsBS, RzMC_PsBS, EMC_PsBS, NMC_PsBS , 20, rmcp, abs(pdg));
                     }
                     else if (pdg == 22 && i == 0)
                     {
@@ -356,6 +370,11 @@ void Read(std::string rf, std::vector<std::string> const &files) {
                         ISR2[0] = mcp->getEnergy();
                         for (int i = 1; i < 4; ++i) ISR2[i] = mcp->getMomentum()[i-1];
                     }
+                    else if (pdg == 25)
+                    {
+                        EMC_H = mcp->getEnergy();
+                        //for (int i = 1; i < 4; ++i) ISR2[i] = mcp->getMomentum()[i-1];
+                    }
 
                     EMC_cms += mcp->getEnergy();
                 }
@@ -363,11 +382,7 @@ void Read(std::string rf, std::vector<std::string> const &files) {
 
             EMC_Ps = P1[0]+P2[0];
             MMC_Ps = TLorentzVector(P1[1]+P2[1], P1[2]+P2[2], P1[3]+P2[3], P1[0]+P2[0]).M();
-            EMC_totForSmear = P1F[0] + P2F[0] + FSR1[0] + FSR2[0] + ISR1[0] + ISR2[0] + P1BS[0] + P1BS[0];
-
-            AMC_FSRPs = 4;
-            if(Rho(fsr)) AMC_FSRPs = std::min(Angle(e1, fsr), AMC_FSRPs);
-            if(Rho(fsr)) AMC_FSRPs = std::min(Angle(e2, fsr), AMC_FSRPs);
+            EMC_totForSmear = P1F[0] + P2F[0] + FSR1[0] + FSR2[0] + ISR1[0] + ISR2[0];
 
             if (arbor)
             {
@@ -401,6 +416,7 @@ void Read(std::string rf, std::vector<std::string> const &files) {
             //if(NMC_P2BS) printf("2: %f %f\n", NMC_P2BS, EMC_P2BS);
 
             tree.Fill();
+            idx++;
         }
         lcReader->close();
     }
