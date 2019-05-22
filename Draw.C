@@ -9,101 +9,7 @@
 #include <TGraphErrors.h>
 #include <TF1.h>
 
-double eff_width(TH1 *h, double *err = NULL) {
-
-        //                                 1
-        // eff_width =      ----------------------------------
-        //                  integrate  2 sqrt(pi) (p.d.f)^2 dx
-
-        int n = h->GetNbinsX();
-        double sum = 0;
-        double sum2 = 0;
-        for(int i = 1; i <= n; ++i) {
-            double pdfw = h->GetBinContent(i); 
-            double w = h->GetBinWidth(i); 
-            sum += pdfw;
-            sum2 += pdfw*pdfw / w; 
-        
-        }
-        double result = sum*sum / ( 2*sqrt(3.14159265359)*sum2);
-
-
-        if(err) {
-
-            double sum = 0;
-            double sum2 = 0;
-            double sum3 = 0;
-            for (int i = 1; i <= n; ++i)
-            {
-                double n = h->GetBinContent(i);
-                double w = h->GetBinWidth(i);
-                sum += n;
-                sum2 += n*n/w;
-                sum3 += n*n*n/(w*w);
-            }
-            double e = 2/(sum2*sum)*sqrt(sum*(sum3*sum-sum2*sum2));
-            *err = e * result;
-        }
-
-
-        return result;
-}
-
-double HalfWidth(TH1 *h) {
-        double mean = h->GetMean();
-        double tot = h->Integral(1, h->GetNbinsX());
-        double width = 0;
-        for(int left = 1; left <= h->GetNbinsX(); ++left)
-        {
-            double cnt = 0;
-            double lx = h->GetBinLowEdge(left);
-            for (int right = left; left <= h->GetNbinsX(); ++right)
-            {
-                cnt += h->GetBinContent(right);
-                if(cnt >= tot*0.6278) {
-                    double rx = h->GetBinLowEdge(right);
-                    double remain = cnt - tot*0.6278;
-                    rx += std::max(1., remain / h->GetBinContent(right)) * h->GetBinWidth(right);
-                    if(left == 1) width = rx - lx;
-                    else width = std::min(width, rx - lx);
-                    break;
-                }
-            }
-        }
-        return width;
-}
-
-
-
 #include <cmath>
-
-// see math/mathcore/src/PdfFuncMathCore.cxx in ROOT 6.x
-double crystalball_function(double x, double alpha, double n, double sigma, double mean) {
-  // evaluate the crystal ball function
-  if (sigma < 0.)     return 0.;
-  double z = (x - mean)/sigma;
-  if (alpha < 0) z = -z;
-  double abs_alpha = std::abs(alpha);
-  // double C = n/abs_alpha * 1./(n-1.) * std::exp(-alpha*alpha/2.);
-  // double D = std::sqrt(M_PI/2.)*(1.+ROOT::Math::erf(abs_alpha/std::sqrt(2.)));
-  // double N = 1./(sigma*(C+D));
-  if (z  > - abs_alpha)
-    return std::exp(- 0.5 * z * z);
-  else {
-    //double A = std::pow(n/abs_alpha,n) * std::exp(-0.5*abs_alpha*abs_alpha);
-    double nDivAlpha = n/abs_alpha;
-    double AA =  std::exp(-0.5*abs_alpha*abs_alpha);
-    double B = nDivAlpha -abs_alpha;
-    double arg = nDivAlpha/(B-z);
-    return AA * std::pow(arg,n);
-  }
-}
-
-double crystalball_function(const double *x, const double *p) {
-  // if ((!x) || (!p)) return 0.; // just a precaution
-  // [Constant] * ROOT::Math::crystalball_function(x, [Alpha], [N], [Sigma], [Mean])
-  return (p[0] * crystalball_function(x[0], p[3], p[4], p[2], p[1]));
-}
 
 
 double isr1[4];
@@ -125,6 +31,7 @@ double e2_[4];
 double bs1_[4];
 double bs2_[4];
 
+double const trkRes = 3.85E-3;
 
 void SmearPhoton(double *to, double *from, double a, double r) {
 
@@ -160,12 +67,12 @@ void Smear(double a) {
 
     for (int i = 0; i < 4; ++i)
     {
-        e1_[i] = (E1[i] - bs1[i]) * (1 + rnd[6] * 5E-3);
-        e2_[i] = (E2[i] - bs2[i]) * (1 + rnd[7] * 5E-3);
+        e1_[i] = (E1[i] - bs1[i]) * (1 + rnd[6] * trkRes);
+        e2_[i] = (E2[i] - bs2[i]) * (1 + rnd[7] * trkRes);
     }
 }
 
-void Plot(char const *name, char const *output) {
+void Plot(char const *name, char const *output, double bkg, double nExp, TGraph *&grWidth, TGraph *&grWidth2, TGraph *&grMassErr, TGraph *&grMassErr2) {
 
 
     TFile *f = new TFile(name);
@@ -188,17 +95,18 @@ void Plot(char const *name, char const *output) {
     tree->GetEntry(0);
 
     TH1D htot("","", 2*(int)(Ecms + 20), 0, Ecms + 20);
-    TH1D hrec("","", 200, 120, 140);
-    TH1D hrecE("","", 200, 120, 140);
-    TH1D hrecEB("","", 200, 120, 140);
 
-    TH1D hrecEB1("","", 200, 120, 140);
-    TH1D hrecEB2("","", 200, 120, 140);
-    TH1D hrecEB3("","", 200, 120, 140);
-    TH1D hrecEB4("","", 200, 120, 140);
-    TH1D hrecEB5("","", 200, 120, 140);
+    int Nbins = 100;
+    TH1D hrec("","", Nbins, 120, 140);
+    TH1D hrecE("","", Nbins, 120, 140);
+    TH1D hrecEB("","", Nbins, 120, 140);
 
-    int Nbins = 200;
+    TH1D hrecEB1("","", Nbins, 120, 140);
+    TH1D hrecEB2("","", Nbins, 120, 140);
+    TH1D hrecEB3("","", Nbins, 120, 140);
+    TH1D hrecEB4("","", Nbins, 120, 140);
+    TH1D hrecEB5("","", Nbins, 120, 140);
+
     TH1D *hrecEBs[10];
     TH1D *hrecEs[10];
   
@@ -213,6 +121,7 @@ void Plot(char const *name, char const *output) {
     TH1D hfsr("","",100, 0, 50);
     TH1D hbs("","",100, 0, 25);
     TH1D hisr("","",100, 0, 25);
+    
     for (int i = 0; i < (int)tree->GetEntries(); ++i)
     {
         tree->GetEntry(i);
@@ -303,6 +212,55 @@ void Plot(char const *name, char const *output) {
         }
     }
 
+    // scale the signal
+    double nevts = tree->GetEntries();
+    //double scale = sqrt(nevts/nExp);
+    //double weight = 1;
+    double scale = 1;
+    double weight = nExp/nevts;
+
+    hrec.Scale(weight);
+    hrecE.Scale(weight);
+    hrecEB.Scale(weight);
+    hrecEB1.Scale(weight);
+    hrecEB2.Scale(weight);
+    hrecEB3.Scale(weight);
+    hrecEB4.Scale(weight);
+    hrecEB5.Scale(weight);
+
+    for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
+    {
+        hrecEBs[i]->Scale(weight);
+        hrecEs[i]->Scale(weight);
+    }
+
+    // add fake backgrounds
+    // add fake backgrounds
+    for (int b = 1; b <= hrecEBs[0]->GetNbinsX(); ++b)
+    {
+        double nb = gRandom->Poisson(bkg * hrecEBs[0]->GetBinWidth(b));
+        for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
+        {
+            hrecEBs[i]->AddBinContent(b, nb);
+        }
+    }
+    for (int b = 1; b <= hrecEs[0]->GetNbinsX(); ++b)
+    {
+        double nb = gRandom->Poisson(bkg * hrecEs[0]->GetBinWidth(b));
+        for (int i = 0; i < sizeof(hrecEs) / sizeof(void *); ++i)
+        {
+            hrecEs[i]->AddBinContent(b, nb);
+        }
+    }
+
+    // let error = sqrt(value)
+    for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
+    {
+        hrecEBs[i]->Sumw2(false);
+        hrecEs[i]->Sumw2(false);
+    }
+
+
     {
         TCanvas cvs;
         hrecEB1.GetXaxis()->CenterTitle();
@@ -315,13 +273,13 @@ void Plot(char const *name, char const *output) {
         hrecEB5.SetLineColor(kBlack);
         
         hrecEB1.SetStats(false);
-        hrecEB1.Draw();
+        hrecEB1.Draw("HIST");
 
-        hrecEB1.Draw("SAME");
-        hrecEB2.Draw("SAME");
-        hrecEB3.Draw("SAME");
-        hrecEB4.Draw("SAME");
-        hrecEB5.Draw("SAME");
+        hrecEB1.Draw("HIST SAME");
+        hrecEB2.Draw("HIST SAME");
+        hrecEB3.Draw("HIST SAME");
+        hrecEB4.Draw("HIST SAME");
+        hrecEB5.Draw("HIST SAME");
 
 
         TLegend leg(0.5, 0.65, 0.89, 0.89);
@@ -339,84 +297,110 @@ void Plot(char const *name, char const *output) {
     }
 
     {
-        TGraphErrors gr;
-        TGraphErrors gr2;
+        TGraph &sigma = *(new TGraph());
+        grWidth = &sigma;
+        TGraph &sigma2 = *(new TGraph());
+        grWidth2 = &sigma2;
+
+        TGraph &massErr = *(new TGraph());
+        grMassErr = &massErr;
+
+        TGraph &massErr2 = *(new TGraph());
+        grMassErr2 = &massErr2;
+
+        TGraph mass;
+
+
         for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
         {
 
-            if (i == 0)
-            {
-
-                TF1 *ff = new TF1("", crystalball_function, 120, 140, 5);
-                ff->SetParNames("Constant", "Mean", "Sigma", "Alpha", "N");
-                TH1D *h = hrecEBs[i];
-                double max_ = h->GetMaximum();
-                ff->SetParameter(0, max_);
-                ff->SetParameter(1, 125);
-                ff->SetParameter(2, 1);
-                ff->SetParameter(3, 1);
-                ff->SetParameter(4, 1);
-
-                h->Fit(ff);
-                TCanvas cvs;
-                h->Draw();
-                char b[100];
-                sprintf(b, "TryCrystallball%f.png", i * da);
-                cvs.Print(b);
-            }
-
-            if (1)
             {
                 TH1D *h = hrecEBs[i];
-                TF1 *ff = new TF1("", "gaus(0)", 120, 126);
-                h->Fit(ff, "R");
-                int n = gr.GetN();
-                gr.SetPoint(n, i * da, 100*ff->GetParameter(2)/125);
-                gr.SetPointError(n, 0, 100*ff->GetParError(2)/125);
+                TF1 *ff = new TF1("", "gaus(0) + [3]", 120, 126);
+                ff->SetParameters(100, 125, 1, bkg*20/Nbins);
+                ff->SetParNames("C", "Mean", "Sigma", "Bkg");
+                h->Fit(ff, "R Q");
+                int n = sigma.GetN();
+                sigma.SetPoint(n, i * da, ff->GetParameter(2));
+                mass.SetPoint(n, i * da, ff->GetParameter(1));
+                massErr.SetPoint(n, i * da, scale*1000*ff->GetParError(1));
 
                 TCanvas cvs;
+                h->GetYaxis()->SetTitle("Events / 0.2GeV");
+                h->SetMinimum(0);
                 h->Draw();
+                ff->SetLineColor(kBlue);
+                ff->SetLineWidth(2);
                 char b[100];
-                sprintf(b, "TryGaus%f.png", i * da);
+                sprintf(b, "%sTryGaus_a%f.png", output, i * da);
                 cvs.Print(b);
+
             }
-            if (1)
-            {
-                TF1 *ff = new TF1("", "gaus(0)", 120, 126);
+
+            if(i == 0) {
                 TH1D *h = hrecEs[i];
+                TF1 *ff = new TF1("", "gaus(0) + [3]", 120, 126);
+                ff->SetParameters(100, 125, 1, bkg*20/Nbins);
+                ff->SetParNames("C", "Mean", "Sigma", "Bkg");
                 h->Fit(ff, "R");
-                //gr2.SetMaximum(100 * ff->GetParameter(2) / 125 * 1.2);
-                int n = gr2.GetN();
-                gr2.SetPoint(n, i * da, 100 * ff->GetParameter(2) / 125);
-                gr2.SetPointError(n, 0, 100 * ff->GetParError(2) / 125);
 
+                sigma2.SetPoint(0, 0, ff->GetParameter(2));
+                sigma2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *)-1)*da, ff->GetParameter(2));
+                massErr2.SetPoint(0, 0, scale*1000*ff->GetParError(1));
+                massErr2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *)-1)*da, scale*1000*ff->GetParError(1));
+                
                 TCanvas cvs;
+                //h->Scale(nExp/nevts);
+                h->GetYaxis()->SetTitle("Events / 0.2GeV");
+                h->SetMinimum(0);
                 h->Draw();
-                char b[100];
-                sprintf(b, "TryGausE_%f.png", i * da);
-                cvs.Print(b);
+                ff->SetLineColor(kBlue); 
+                ff->SetLineWidth(2);
+
+                TF1 gaus("", "gaus(0)", 120, 126);
+                gaus.SetParameters(ff->GetParameters());
+                gaus.Draw("SAME");
+
+                cvs.Print(("TryGaus2_" + std::string(output) + ".png").c_str());
             }
         }
 
         {
             TCanvas cvs;
-            gr.GetXaxis()->CenterTitle();
-            gr.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
-            gr.GetYaxis()->CenterTitle();
-            gr.GetYaxis()->SetTitle("Resolution of Recoil Mass Against Lepton + BS + FSR[%]");
-            gr.Draw("ALP");
+            sigma.GetXaxis()->CenterTitle();
+            sigma.GetXaxis()->SetTitle("a (Resolution(Photon) = a/#sqrt{E})");
+            sigma.GetYaxis()->CenterTitle();
+            sigma.GetYaxis()->SetTitle("Width of Recoil Mass [GeV]");
+            sigma2.SetLineColor(kGray);
+
+            sigma.Draw("AL");
+            sigma.Draw("SAME L");
+            cvs.Print((std::string(output) + ".pdf").c_str());
+        }
+
+        if(0) {
+            TCanvas cvs;
+            mass.GetXaxis()->CenterTitle();
+            mass.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
+            mass.GetYaxis()->CenterTitle();
+            mass.GetYaxis()->SetTitle("Higgs Mass [GeV]");
+            mass.Draw("ALP");
             cvs.Print((std::string(output) + ".pdf").c_str());
         }
 
         {
             TCanvas cvs;
-            gr2.GetXaxis()->CenterTitle();
-            gr2.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
-            gr2.GetYaxis()->CenterTitle();
-            gr2.GetYaxis()->SetTitle("Resolution of Recoil Mass Against Lepton [%]");
-            gr2.Draw("ALP");
+            massErr.GetXaxis()->CenterTitle();
+            massErr.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
+            massErr.GetYaxis()->CenterTitle();
+            massErr.GetYaxis()->SetTitle("Uncertainty of Higgs Mass [MeV]");
+            massErr2.SetLineColor(kGray);
+            massErr.Draw("AL");
+            massErr2.Draw("SAME L");
+            gPad->SetLeftMargin(2);
             cvs.Print((std::string(output) + ".pdf").c_str());
         }
+
     }
 
     {
@@ -474,6 +458,78 @@ void Plot(char const *name, char const *output) {
 
 
 void Draw() {
-    Plot("eeH.root", "eeH");
-    Plot("mumuH.root", "mumuH");
+    TGraph *ew1 = NULL;
+    TGraph *ew2 = NULL;
+    TGraph *em1 = NULL;
+    TGraph *em2 = NULL;
+    TGraph *mw1 = NULL;
+    TGraph *mw2 = NULL;
+    TGraph *mm1 = NULL;
+    TGraph *mm2 = NULL;
+
+    Plot("eeH.root", "eeH", 1100*5, 7.04*5000*0.28, ew1, ew2, em1, em2);
+    Plot("mumuH.root", "mumuH", 600*5, 6.77*5000*0.62, mw1, mw2, mm1, mm2);
+
+    if(ew1 && ew2 && mw1 && mw2) {
+        TCanvas cvs;
+        ew1->SetLineColor(kRed);
+        ew1->SetLineWidth(2);
+        mw1->SetLineColor(kGreen);        
+        mw1->SetLineWidth(2);
+
+        ew2->SetLineColor(kRed);
+        ew2->SetLineWidth(2);
+        ew2->SetLineStyle(2);
+
+        mw2->SetLineColor(kGreen);        
+        mw2->SetLineWidth(2);
+        mw2->SetLineStyle(2);
+
+        ew1->Draw("AL");
+        mw1->Draw("SAME L");
+        ew2->Draw("SAME L");
+        mw2->Draw("SAME L");
+
+        TLegend leg(0.2, 0.70, 0.59, 0.89);
+        leg.AddEntry(ew1, "eeH (w/ FSR&BS)");
+        leg.AddEntry(mw1, "#mu#muH (w/ FSR&BS)");
+        leg.AddEntry(ew2, "eeH (w/o FSR&BS)");
+        leg.AddEntry(mw2, "#mu#muH (w/o FSR&BS)");
+        leg.SetBorderSize(0);
+        leg.Draw();
+        cvs.Print("width.pdf");
+    }
+
+    if(em1 && mm1 && em2 && mm2) {
+        TCanvas cvs;
+        em1->SetLineColor(kRed);
+        em1->SetLineWidth(2);
+        mm1->SetLineColor(kGreen);        
+        mm1->SetLineWidth(2);
+
+        em2->SetLineColor(kRed);
+        em2->SetLineWidth(2);
+        em2->SetLineStyle(2);
+        mm2->SetLineColor(kGreen);        
+        mm2->SetLineWidth(2);
+        mm2->SetLineStyle(2);
+        
+        em1->SetMaximum(50);
+        em1->SetMinimum(0);
+        em1->Draw("AL");
+        mm1->Draw("SAME L");
+        em2->Draw("SAME L");
+        mm2->Draw("SAME L");
+
+        TLegend leg(0.2, 0.70, 0.59, 0.89);
+        leg.AddEntry(em1, "eeH (w/ FSR&BS)");
+        leg.AddEntry(mm1, "#mu#muH (w/ FSR&BS)");
+        leg.AddEntry(em2, "eeH (w/o FSR&BS)");
+        leg.AddEntry(mm2, "#mu#muH (w/o FSR&BS)");
+        leg.SetBorderSize(0);
+        leg.Draw();
+        cvs.Print("massError.pdf");
+    }
+    if(0) printf("%p %p %p %p %p %p %p %p\n", ew1, ew2, mw1, mw2, em1, em2, mm1, mm2);
+
 }
