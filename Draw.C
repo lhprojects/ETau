@@ -316,14 +316,24 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
 
             {
                 TH1D *h = hrecEBs[i];
+                
                 TF1 *ff = new TF1("", "gaus(0) + [3]", 120, 126);
-                ff->SetParameters(100, 125, 1, bkg*20/Nbins);
+                ff->SetParameters(100, 125, 0.8, bkg*20/Nbins);
                 ff->SetParNames("C", "Mean", "Sigma", "Bkg");
                 h->Fit(ff, "R Q");
                 int n = sigma.GetN();
                 sigma.SetPoint(n, i * da, ff->GetParameter(2));
                 mass.SetPoint(n, i * da, ff->GetParameter(1));
                 massErr.SetPoint(n, i * da, scale*1000*ff->GetParError(1));
+
+                TF1 sig("", "[0]*gaus(1) + [4]", 120, 126);
+                sig.SetParNames("Sig", "C", "Mean", "Sigma", "Bkg");
+                sig.SetParameter(0, 1);
+                sig.FixParameter(1, ff->GetParameter(0));
+                sig.FixParameter(2, ff->GetParameter(1));
+                sig.FixParameter(3, ff->GetParameter(2));
+                sig.FixParameter(4, ff->GetParameter(3));
+                h->Fit(&sig, "R Q");
 
                 TCanvas cvs;
                 h->GetYaxis()->SetTitle("Events / 0.2GeV");
@@ -343,6 +353,16 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
                 ff->SetParameters(100, 125, 1, bkg*20/Nbins);
                 ff->SetParNames("C", "Mean", "Sigma", "Bkg");
                 h->Fit(ff, "R");
+
+                TF1 sig("", "[0]*gaus(1) + [4]", 120, 126);
+                sig.SetParNames("Sig", "C", "Mean", "Sigma", "Bkg");
+                sig.SetParameter(0, 1);
+                sig.FixParameter(1, ff->GetParameter(0));
+                sig.FixParameter(2, ff->GetParameter(1));
+                sig.FixParameter(3, ff->GetParameter(2));
+                sig.FixParameter(4, ff->GetParameter(3));
+                h->Fit(&sig, "R");
+                printf("sig %f\n", sig.GetParError(0));
 
                 sigma2.SetPoint(0, 0, ff->GetParameter(2));
                 sigma2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *)-1)*da, ff->GetParameter(2));
@@ -368,7 +388,7 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
         {
             TCanvas cvs;
             sigma.GetXaxis()->CenterTitle();
-            sigma.GetXaxis()->SetTitle("a (Resolution(Photon) = a/#sqrt{E})");
+            sigma.GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
             sigma.GetYaxis()->CenterTitle();
             sigma.GetYaxis()->SetTitle("Width of Recoil Mass [GeV]");
             sigma2.SetLineColor(kGray);
@@ -381,7 +401,7 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
         if(0) {
             TCanvas cvs;
             mass.GetXaxis()->CenterTitle();
-            mass.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
+            mass.GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
             mass.GetYaxis()->CenterTitle();
             mass.GetYaxis()->SetTitle("Higgs Mass [GeV]");
             mass.Draw("ALP");
@@ -391,7 +411,7 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
         {
             TCanvas cvs;
             massErr.GetXaxis()->CenterTitle();
-            massErr.GetXaxis()->SetTitle("a (Resolution(Photon)=a/#sqrt{E})");
+            massErr.GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
             massErr.GetYaxis()->CenterTitle();
             massErr.GetYaxis()->SetTitle("Uncertainty of Higgs Mass [MeV]");
             massErr2.SetLineColor(kGray);
@@ -406,14 +426,14 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
     {
         TCanvas cvs;
         hrec.GetXaxis()->CenterTitle();
-        hrec.GetXaxis()->SetTitle("Recoil(elec.+BS+FSR+ISR) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
+        hrec.GetXaxis()->SetTitle("Recoil(Lep.+BS+FSR+ISR) (#sigma(E_{#gamma})/E_{#gamma}=0.17/sqrt(E)) [GeV]");
         hrec.Draw();
         cvs.Print((std::string(output) + ".pdf").c_str());
     }
     {
         TCanvas cvs;
         hrecEB.GetXaxis()->CenterTitle();
-        hrecEB.GetXaxis()->SetTitle("Recoil(elec.+BS+FSR) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
+        hrecEB.GetXaxis()->SetTitle("Recoil(Lep.+BS+FSR) (#sigma(E_{#gamma})/E_{#gamma}=0.17/sqrt(E)) [GeV]");
         hrecEB.SetStats(true);
         hrecEB.Draw();
         cvs.Print((std::string(output) + ".pdf").c_str());
@@ -421,7 +441,7 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
     {
         TCanvas cvs;
         hrecE.GetXaxis()->CenterTitle();
-        hrecE.GetXaxis()->SetTitle("Recoil(elec.) (Resolution(Photon)=0.17/sqrt(E) && Resolution(e) = 5E-3) [GeV]");
+        hrecE.GetXaxis()->SetTitle("Recoil(Lep.) (#sigma(E_{#gamma})/E_{#gamma}=0.17/sqrt(E)) [GeV]");
         hrecE.Draw();
         cvs.Print((std::string(output) + ".pdf").c_str());
     }
@@ -455,9 +475,26 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
         cvs.Print((std::string(output) + ".pdf)").c_str());
     }
 }
+void SetStyle() {
+    gStyle->SetOptStat(0);
+    gStyle->SetOptTitle(0);
+    gStyle->SetCanvasDefH(600);
+    gStyle->SetCanvasDefW(600);
+    gStyle->SetLabelSize(0.04,"xyz");
+    gStyle->SetTitleSize(0.05,"xyz");
+    gStyle->SetTitleOffset(1.2,"yz");
+    gStyle->SetTitleOffset(1.2,"x");
+
+    gStyle->SetPadBottomMargin(0.15);
+    gStyle->SetPadTopMargin(0.05);
+    gStyle->SetPadRightMargin(0.05);
+    gStyle->SetPadLeftMargin(0.15);
+
+}
 
 
 void Draw() {
+    SetStyle();
     TGraph *ew1 = NULL;
     TGraph *ew2 = NULL;
     TGraph *em1 = NULL;
@@ -467,11 +504,12 @@ void Draw() {
     TGraph *mm1 = NULL;
     TGraph *mm2 = NULL;
 
-    Plot("eeH.root", "eeH", 1100*5, 7.04*5000*0.28, ew1, ew2, em1, em2);
+    Plot("eeH.root", "eeH", 1100*5, 7.04*5000*1.0, ew1, ew2, em1, em2);
     Plot("mumuH.root", "mumuH", 600*5, 6.77*5000*0.62, mw1, mw2, mm1, mm2);
 
     if(ew1 && ew2 && mw1 && mw2) {
         TCanvas cvs;
+
         ew1->SetLineColor(kRed);
         ew1->SetLineWidth(2);
         mw1->SetLineColor(kGreen);        
@@ -485,27 +523,49 @@ void Draw() {
         mw2->SetLineWidth(2);
         mw2->SetLineStyle(2);
 
+        ew1->SetMaximum(0.8);
+        //ew1->SetMinimum(0);
+        
         ew1->Draw("AL");
         mw1->Draw("SAME L");
         ew2->Draw("SAME L");
         mw2->Draw("SAME L");
 
-        TLegend leg(0.2, 0.70, 0.59, 0.89);
-        leg.AddEntry(ew1, "eeH (w/ FSR&BS)");
-        leg.AddEntry(mw1, "#mu#muH (w/ FSR&BS)");
-        leg.AddEntry(ew2, "eeH (w/o FSR&BS)");
-        leg.AddEntry(mw2, "#mu#muH (w/o FSR&BS)");
+        ew1->SetName("ew1");
+        mw1->SetName("mw1");
+        ew2->SetName("ew2");
+        mw2->SetName("mw2");
+
+        TLegend leg(0.52, 0.70, 0.92, 0.9);
+        leg.AddEntry(ew1, "eeH (w/ FSR&BS)", "L");
+        leg.AddEntry(mw1, "#mu#muH (w/ FSR&BS)", "L");
+        leg.AddEntry(ew2, "eeH (w/o FSR&BS)", "L");
+        leg.AddEntry(mw2, "#mu#muH (w/o FSR&BS)", "L");
         leg.SetBorderSize(0);
         leg.Draw();
         cvs.Print("width.pdf");
+        cvs.Print("C/width.C");
     }
 
     if(em1 && mm1 && em2 && mm2) {
         TCanvas cvs;
+
+
+        TGraph com;
+        for(int i = 0; i < em1->GetN(); ++i) {
+            double x,y1,y2;
+            em1->GetPoint(i, x, y1);
+            mm1->GetPoint(i, x, y2);
+            com.SetPoint(i, x, 1./sqrt(1/(y1*y1)+1/(y2*y2)));
+        }
+
         em1->SetLineColor(kRed);
         em1->SetLineWidth(2);
         mm1->SetLineColor(kGreen);        
         mm1->SetLineWidth(2);
+
+        com.SetLineWidth(2);
+        com.SetLineColor(kBlue);
 
         em2->SetLineColor(kRed);
         em2->SetLineWidth(2);
@@ -514,21 +574,30 @@ void Draw() {
         mm2->SetLineWidth(2);
         mm2->SetLineStyle(2);
         
-        em1->SetMaximum(50);
+        em1->SetMaximum(25);
         em1->SetMinimum(0);
         em1->Draw("AL");
         mm1->Draw("SAME L");
         em2->Draw("SAME L");
         mm2->Draw("SAME L");
+        com.Draw("SAME L");
 
-        TLegend leg(0.2, 0.70, 0.59, 0.89);
-        leg.AddEntry(em1, "eeH (w/ FSR&BS)");
-        leg.AddEntry(mm1, "#mu#muH (w/ FSR&BS)");
-        leg.AddEntry(em2, "eeH (w/o FSR&BS)");
-        leg.AddEntry(mm2, "#mu#muH (w/o FSR&BS)");
+        em1->SetName("em1");
+        mm1->SetName("mm1");
+        em2->SetName("em2");
+        mm2->SetName("mm2");
+        com.SetName("com");
+
+        TLegend leg(0.52, 0.70, 0.92, 0.92);
+        leg.AddEntry(em1, "eeH (w/ FSR&BS)", "L");
+        leg.AddEntry(mm1, "#mu#muH (w/ FSR&BS)", "L");
+        leg.AddEntry(em2, "eeH (w/o FSR&BS)", "L");
+        leg.AddEntry(mm2, "#mu#muH (w/o FSR&BS)", "L");
+        leg.AddEntry(&com, "Combined (w/ FSR&BS)", "L");
         leg.SetBorderSize(0);
         leg.Draw();
         cvs.Print("massError.pdf");
+        cvs.Print("C/massError.C");
     }
     if(0) printf("%p %p %p %p %p %p %p %p\n", ew1, ew2, mw1, mw2, em1, em2, mm1, mm2);
 
