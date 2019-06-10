@@ -1,8 +1,8 @@
 void width()
 {
 //=========Macro generated from canvas: c1_n2/c1_n2
-//=========  (Mon Jun 10 10:19:40 2019) by ROOT version 6.16/00
-   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",10,10,600,600);
+//=========  (Mon Jun 10 18:34:27 2019) by ROOT version 6.16/00
+   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",0,0,600,600);
    gStyle->SetOptStat(0);
    gStyle->SetOptTitle(0);
    c1_n2->Range(-0.07425,-0.15,0.42075,0.85);
@@ -16,7 +16,7 @@ void width()
    c1_n2->SetFrameBorderMode(0);
    c1_n2->SetFrameBorderMode(0);
    
-   Double_t ew1_fx1[10] = {
+   Double_t ew1_fx28[10] = {
    0,
    0.04,
    0.08,
@@ -27,18 +27,18 @@ void width()
    0.28,
    0.32,
    0.36};
-   Double_t ew1_fy1[10] = {
-   0.4118671,
-   0.4491232,
-   0.5023143,
-   0.5453052,
-   0.5797867,
-   0.6071323,
-   0.6289974,
-   0.6484996,
-   0.6668319,
-   0.6827351};
-   TGraph *graph = new TGraph(10,ew1_fx1,ew1_fy1);
+   Double_t ew1_fy28[10] = {
+   0.4897868,
+   0.4977402,
+   0.5189529,
+   0.5506855,
+   0.5778832,
+   0.6071246,
+   0.6292717,
+   0.6524544,
+   0.6699018,
+   0.6893452};
+   TGraph *graph = new TGraph(10,ew1_fx28,ew1_fy28);
    graph->SetName("ew1");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -49,35 +49,35 @@ void width()
    graph->SetLineColor(ci);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_ew11 = new TH1F("Graph_ew11","",100,0,0.396);
-   Graph_ew11->SetMinimum(0);
-   Graph_ew11->SetMaximum(0.8);
-   Graph_ew11->SetDirectory(0);
-   Graph_ew11->SetStats(0);
+   TH1F *Graph_ew128 = new TH1F("Graph_ew128","",100,0,0.396);
+   Graph_ew128->SetMinimum(0);
+   Graph_ew128->SetMaximum(0.8);
+   Graph_ew128->SetDirectory(0);
+   Graph_ew128->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_ew11->SetLineColor(ci);
-   Graph_ew11->GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
-   Graph_ew11->GetXaxis()->CenterTitle(true);
-   Graph_ew11->GetXaxis()->SetLabelFont(42);
-   Graph_ew11->GetXaxis()->SetTitleSize(0.05);
-   Graph_ew11->GetXaxis()->SetTitleOffset(1.2);
-   Graph_ew11->GetXaxis()->SetTitleFont(42);
-   Graph_ew11->GetYaxis()->SetTitle("Width of Recoil Mass [GeV]");
-   Graph_ew11->GetYaxis()->CenterTitle(true);
-   Graph_ew11->GetYaxis()->SetLabelFont(42);
-   Graph_ew11->GetYaxis()->SetTitleSize(0.05);
-   Graph_ew11->GetYaxis()->SetTitleOffset(1.2);
-   Graph_ew11->GetYaxis()->SetTitleFont(42);
-   Graph_ew11->GetZaxis()->SetLabelFont(42);
-   Graph_ew11->GetZaxis()->SetTitleSize(0.05);
-   Graph_ew11->GetZaxis()->SetTitleOffset(1.2);
-   Graph_ew11->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_ew11);
+   Graph_ew128->SetLineColor(ci);
+   Graph_ew128->GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
+   Graph_ew128->GetXaxis()->CenterTitle(true);
+   Graph_ew128->GetXaxis()->SetLabelFont(42);
+   Graph_ew128->GetXaxis()->SetTitleSize(0.05);
+   Graph_ew128->GetXaxis()->SetTitleOffset(1.2);
+   Graph_ew128->GetXaxis()->SetTitleFont(42);
+   Graph_ew128->GetYaxis()->SetTitle("Width of Recoil Mass [GeV]");
+   Graph_ew128->GetYaxis()->CenterTitle(true);
+   Graph_ew128->GetYaxis()->SetLabelFont(42);
+   Graph_ew128->GetYaxis()->SetTitleSize(0.05);
+   Graph_ew128->GetYaxis()->SetTitleOffset(1.2);
+   Graph_ew128->GetYaxis()->SetTitleFont(42);
+   Graph_ew128->GetZaxis()->SetLabelFont(42);
+   Graph_ew128->GetZaxis()->SetTitleSize(0.05);
+   Graph_ew128->GetZaxis()->SetTitleOffset(1.2);
+   Graph_ew128->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_ew128);
    
    graph->Draw("al");
    
-   Double_t mw1_fx2[10] = {
+   Double_t mw1_fx29[10] = {
    0,
    0.04,
    0.08,
@@ -88,18 +88,18 @@ void width()
    0.28,
    0.32,
    0.36};
-   Double_t mw1_fy2[10] = {
-   0.414112,
-   0.4204904,
-   0.4312037,
-   0.4390273,
-   0.4443253,
-   0.4477443,
-   0.4499155,
-   0.4516876,
-   0.4536476,
-   0.4550351};
-   graph = new TGraph(10,mw1_fx2,mw1_fy2);
+   Double_t mw1_fy29[10] = {
+   0.382578,
+   0.3859842,
+   0.3919914,
+   0.3991334,
+   0.4039031,
+   0.4079256,
+   0.4122444,
+   0.4152655,
+   0.4176107,
+   0.4196368};
+   graph = new TGraph(10,mw1_fx29,mw1_fy29);
    graph->SetName("mw1");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -108,41 +108,41 @@ void width()
    graph->SetLineColor(ci);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_mw12 = new TH1F("Graph_mw12","",100,0,0.396);
-   Graph_mw12->SetMinimum(0.4100197);
-   Graph_mw12->SetMaximum(0.4591274);
-   Graph_mw12->SetDirectory(0);
-   Graph_mw12->SetStats(0);
+   TH1F *Graph_mw129 = new TH1F("Graph_mw129","",100,0,0.396);
+   Graph_mw129->SetMinimum(0.3788721);
+   Graph_mw129->SetMaximum(0.4233427);
+   Graph_mw129->SetDirectory(0);
+   Graph_mw129->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_mw12->SetLineColor(ci);
-   Graph_mw12->GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
-   Graph_mw12->GetXaxis()->CenterTitle(true);
-   Graph_mw12->GetXaxis()->SetLabelFont(42);
-   Graph_mw12->GetXaxis()->SetTitleSize(0.05);
-   Graph_mw12->GetXaxis()->SetTitleOffset(1.2);
-   Graph_mw12->GetXaxis()->SetTitleFont(42);
-   Graph_mw12->GetYaxis()->SetTitle("Width of Recoil Mass [GeV]");
-   Graph_mw12->GetYaxis()->CenterTitle(true);
-   Graph_mw12->GetYaxis()->SetLabelFont(42);
-   Graph_mw12->GetYaxis()->SetTitleSize(0.05);
-   Graph_mw12->GetYaxis()->SetTitleOffset(1.2);
-   Graph_mw12->GetYaxis()->SetTitleFont(42);
-   Graph_mw12->GetZaxis()->SetLabelFont(42);
-   Graph_mw12->GetZaxis()->SetTitleSize(0.05);
-   Graph_mw12->GetZaxis()->SetTitleOffset(1.2);
-   Graph_mw12->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_mw12);
+   Graph_mw129->SetLineColor(ci);
+   Graph_mw129->GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
+   Graph_mw129->GetXaxis()->CenterTitle(true);
+   Graph_mw129->GetXaxis()->SetLabelFont(42);
+   Graph_mw129->GetXaxis()->SetTitleSize(0.05);
+   Graph_mw129->GetXaxis()->SetTitleOffset(1.2);
+   Graph_mw129->GetXaxis()->SetTitleFont(42);
+   Graph_mw129->GetYaxis()->SetTitle("Width of Recoil Mass [GeV]");
+   Graph_mw129->GetYaxis()->CenterTitle(true);
+   Graph_mw129->GetYaxis()->SetLabelFont(42);
+   Graph_mw129->GetYaxis()->SetTitleSize(0.05);
+   Graph_mw129->GetYaxis()->SetTitleOffset(1.2);
+   Graph_mw129->GetYaxis()->SetTitleFont(42);
+   Graph_mw129->GetZaxis()->SetLabelFont(42);
+   Graph_mw129->GetZaxis()->SetTitleSize(0.05);
+   Graph_mw129->GetZaxis()->SetTitleOffset(1.2);
+   Graph_mw129->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_mw129);
    
    graph->Draw(" l");
    
-   Double_t ew2_fx3[2] = {
+   Double_t ew2_fx30[2] = {
    0,
    0.36};
-   Double_t ew2_fy3[2] = {
-   0.5251267,
-   0.5251267};
-   graph = new TGraph(2,ew2_fx3,ew2_fy3);
+   Double_t ew2_fy30[2] = {
+   0.4443432,
+   0.4443432};
+   graph = new TGraph(2,ew2_fx30,ew2_fy30);
    graph->SetName("ew2");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -152,37 +152,37 @@ void width()
    graph->SetLineStyle(2);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_ew23 = new TH1F("Graph_ew23","",100,0,0.396);
-   Graph_ew23->SetMinimum(0.4251267);
-   Graph_ew23->SetMaximum(1.625127);
-   Graph_ew23->SetDirectory(0);
-   Graph_ew23->SetStats(0);
+   TH1F *Graph_ew230 = new TH1F("Graph_ew230","",100,0,0.396);
+   Graph_ew230->SetMinimum(0.3443432);
+   Graph_ew230->SetMaximum(1.544343);
+   Graph_ew230->SetDirectory(0);
+   Graph_ew230->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_ew23->SetLineColor(ci);
-   Graph_ew23->GetXaxis()->SetLabelFont(42);
-   Graph_ew23->GetXaxis()->SetTitleSize(0.05);
-   Graph_ew23->GetXaxis()->SetTitleOffset(1.2);
-   Graph_ew23->GetXaxis()->SetTitleFont(42);
-   Graph_ew23->GetYaxis()->SetLabelFont(42);
-   Graph_ew23->GetYaxis()->SetTitleSize(0.05);
-   Graph_ew23->GetYaxis()->SetTitleOffset(1.2);
-   Graph_ew23->GetYaxis()->SetTitleFont(42);
-   Graph_ew23->GetZaxis()->SetLabelFont(42);
-   Graph_ew23->GetZaxis()->SetTitleSize(0.05);
-   Graph_ew23->GetZaxis()->SetTitleOffset(1.2);
-   Graph_ew23->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_ew23);
+   Graph_ew230->SetLineColor(ci);
+   Graph_ew230->GetXaxis()->SetLabelFont(42);
+   Graph_ew230->GetXaxis()->SetTitleSize(0.05);
+   Graph_ew230->GetXaxis()->SetTitleOffset(1.2);
+   Graph_ew230->GetXaxis()->SetTitleFont(42);
+   Graph_ew230->GetYaxis()->SetLabelFont(42);
+   Graph_ew230->GetYaxis()->SetTitleSize(0.05);
+   Graph_ew230->GetYaxis()->SetTitleOffset(1.2);
+   Graph_ew230->GetYaxis()->SetTitleFont(42);
+   Graph_ew230->GetZaxis()->SetLabelFont(42);
+   Graph_ew230->GetZaxis()->SetTitleSize(0.05);
+   Graph_ew230->GetZaxis()->SetTitleOffset(1.2);
+   Graph_ew230->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_ew230);
    
    graph->Draw(" l");
    
-   Double_t mw2_fx4[2] = {
+   Double_t mw2_fx31[2] = {
    0,
    0.36};
-   Double_t mw2_fy4[2] = {
-   0.4367382,
-   0.4367382};
-   graph = new TGraph(2,mw2_fx4,mw2_fy4);
+   Double_t mw2_fy31[2] = {
+   0.4230631,
+   0.4230631};
+   graph = new TGraph(2,mw2_fx31,mw2_fy31);
    graph->SetName("mw2");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -192,27 +192,27 @@ void width()
    graph->SetLineStyle(2);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_mw24 = new TH1F("Graph_mw24","",100,0,0.396);
-   Graph_mw24->SetMinimum(0.3367382);
-   Graph_mw24->SetMaximum(1.536738);
-   Graph_mw24->SetDirectory(0);
-   Graph_mw24->SetStats(0);
+   TH1F *Graph_mw231 = new TH1F("Graph_mw231","",100,0,0.396);
+   Graph_mw231->SetMinimum(0.3230631);
+   Graph_mw231->SetMaximum(1.523063);
+   Graph_mw231->SetDirectory(0);
+   Graph_mw231->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_mw24->SetLineColor(ci);
-   Graph_mw24->GetXaxis()->SetLabelFont(42);
-   Graph_mw24->GetXaxis()->SetTitleSize(0.05);
-   Graph_mw24->GetXaxis()->SetTitleOffset(1.2);
-   Graph_mw24->GetXaxis()->SetTitleFont(42);
-   Graph_mw24->GetYaxis()->SetLabelFont(42);
-   Graph_mw24->GetYaxis()->SetTitleSize(0.05);
-   Graph_mw24->GetYaxis()->SetTitleOffset(1.2);
-   Graph_mw24->GetYaxis()->SetTitleFont(42);
-   Graph_mw24->GetZaxis()->SetLabelFont(42);
-   Graph_mw24->GetZaxis()->SetTitleSize(0.05);
-   Graph_mw24->GetZaxis()->SetTitleOffset(1.2);
-   Graph_mw24->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_mw24);
+   Graph_mw231->SetLineColor(ci);
+   Graph_mw231->GetXaxis()->SetLabelFont(42);
+   Graph_mw231->GetXaxis()->SetTitleSize(0.05);
+   Graph_mw231->GetXaxis()->SetTitleOffset(1.2);
+   Graph_mw231->GetXaxis()->SetTitleFont(42);
+   Graph_mw231->GetYaxis()->SetLabelFont(42);
+   Graph_mw231->GetYaxis()->SetTitleSize(0.05);
+   Graph_mw231->GetYaxis()->SetTitleOffset(1.2);
+   Graph_mw231->GetYaxis()->SetTitleFont(42);
+   Graph_mw231->GetZaxis()->SetLabelFont(42);
+   Graph_mw231->GetZaxis()->SetTitleSize(0.05);
+   Graph_mw231->GetZaxis()->SetTitleOffset(1.2);
+   Graph_mw231->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_mw231);
    
    graph->Draw(" l");
    

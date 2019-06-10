@@ -1,8 +1,8 @@
 void massError()
 {
 //=========Macro generated from canvas: c1_n2/c1_n2
-//=========  (Mon Jun 10 10:19:40 2019) by ROOT version 6.16/00
-   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",10,64,600,600);
+//=========  (Mon Jun 10 18:34:27 2019) by ROOT version 6.16/00
+   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",0,0,600,600);
    gStyle->SetOptStat(0);
    gStyle->SetOptTitle(0);
    c1_n2->Range(-0.07425,-8.4375,0.42075,47.8125);
@@ -16,7 +16,7 @@ void massError()
    c1_n2->SetFrameBorderMode(0);
    c1_n2->SetFrameBorderMode(0);
    
-   Double_t em1_fx5[10] = {
+   Double_t em1_fx32[10] = {
    0,
    0.04,
    0.08,
@@ -27,18 +27,18 @@ void massError()
    0.28,
    0.32,
    0.36};
-   Double_t em1_fy5[10] = {
-   5.898922,
-   6.588522,
-   7.877687,
-   9.217179,
-   10.55228,
-   11.88952,
-   13.06101,
-   14.29388,
-   15.54974,
-   16.95446};
-   TGraph *graph = new TGraph(10,em1_fx5,em1_fy5);
+   Double_t em1_fy32[10] = {
+   7.170276,
+   7.352305,
+   7.983605,
+   8.900609,
+   9.592559,
+   10.1828,
+   10.77161,
+   11.23555,
+   12.31635,
+   12.88253};
+   TGraph *graph = new TGraph(10,em1_fx32,em1_fy32);
    graph->SetName("em1");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -49,35 +49,35 @@ void massError()
    graph->SetLineColor(ci);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_em15 = new TH1F("Graph_em15","",100,0,0.396);
-   Graph_em15->SetMinimum(0);
-   Graph_em15->SetMaximum(45);
-   Graph_em15->SetDirectory(0);
-   Graph_em15->SetStats(0);
+   TH1F *Graph_em132 = new TH1F("Graph_em132","",100,0,0.396);
+   Graph_em132->SetMinimum(0);
+   Graph_em132->SetMaximum(45);
+   Graph_em132->SetDirectory(0);
+   Graph_em132->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_em15->SetLineColor(ci);
-   Graph_em15->GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
-   Graph_em15->GetXaxis()->CenterTitle(true);
-   Graph_em15->GetXaxis()->SetLabelFont(42);
-   Graph_em15->GetXaxis()->SetTitleSize(0.05);
-   Graph_em15->GetXaxis()->SetTitleOffset(1.2);
-   Graph_em15->GetXaxis()->SetTitleFont(42);
-   Graph_em15->GetYaxis()->SetTitle("Uncertainty of Higgs Mass [MeV]");
-   Graph_em15->GetYaxis()->CenterTitle(true);
-   Graph_em15->GetYaxis()->SetLabelFont(42);
-   Graph_em15->GetYaxis()->SetTitleSize(0.05);
-   Graph_em15->GetYaxis()->SetTitleOffset(1.2);
-   Graph_em15->GetYaxis()->SetTitleFont(42);
-   Graph_em15->GetZaxis()->SetLabelFont(42);
-   Graph_em15->GetZaxis()->SetTitleSize(0.05);
-   Graph_em15->GetZaxis()->SetTitleOffset(1.2);
-   Graph_em15->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_em15);
+   Graph_em132->SetLineColor(ci);
+   Graph_em132->GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
+   Graph_em132->GetXaxis()->CenterTitle(true);
+   Graph_em132->GetXaxis()->SetLabelFont(42);
+   Graph_em132->GetXaxis()->SetTitleSize(0.05);
+   Graph_em132->GetXaxis()->SetTitleOffset(1.2);
+   Graph_em132->GetXaxis()->SetTitleFont(42);
+   Graph_em132->GetYaxis()->SetTitle("Uncertainty of Higgs Mass [MeV]");
+   Graph_em132->GetYaxis()->CenterTitle(true);
+   Graph_em132->GetYaxis()->SetLabelFont(42);
+   Graph_em132->GetYaxis()->SetTitleSize(0.05);
+   Graph_em132->GetYaxis()->SetTitleOffset(1.2);
+   Graph_em132->GetYaxis()->SetTitleFont(42);
+   Graph_em132->GetZaxis()->SetLabelFont(42);
+   Graph_em132->GetZaxis()->SetTitleSize(0.05);
+   Graph_em132->GetZaxis()->SetTitleOffset(1.2);
+   Graph_em132->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_em132);
    
    graph->Draw("al");
    
-   Double_t mm1_fx6[10] = {
+   Double_t mm1_fx33[10] = {
    0,
    0.04,
    0.08,
@@ -88,18 +88,18 @@ void massError()
    0.28,
    0.32,
    0.36};
-   Double_t mm1_fy6[10] = {
-   4.797045,
-   4.893313,
-   5.097355,
-   5.471929,
-   5.442651,
-   5.46593,
-   5.537991,
-   5.608781,
-   5.670644,
-   5.759036};
-   graph = new TGraph(10,mm1_fx6,mm1_fy6);
+   Double_t mm1_fy33[10] = {
+   4.703845,
+   4.865472,
+   4.967887,
+   5.254921,
+   5.483663,
+   5.2573,
+   5.418004,
+   5.608323,
+   5.727129,
+   5.710606};
+   graph = new TGraph(10,mm1_fx33,mm1_fy33);
    graph->SetName("mm1");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -108,41 +108,41 @@ void massError()
    graph->SetLineColor(ci);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_mm16 = new TH1F("Graph_mm16","",100,0,0.396);
-   Graph_mm16->SetMinimum(4.700846);
-   Graph_mm16->SetMaximum(5.855236);
-   Graph_mm16->SetDirectory(0);
-   Graph_mm16->SetStats(0);
+   TH1F *Graph_mm133 = new TH1F("Graph_mm133","",100,0,0.396);
+   Graph_mm133->SetMinimum(4.601517);
+   Graph_mm133->SetMaximum(5.829457);
+   Graph_mm133->SetDirectory(0);
+   Graph_mm133->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_mm16->SetLineColor(ci);
-   Graph_mm16->GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
-   Graph_mm16->GetXaxis()->CenterTitle(true);
-   Graph_mm16->GetXaxis()->SetLabelFont(42);
-   Graph_mm16->GetXaxis()->SetTitleSize(0.05);
-   Graph_mm16->GetXaxis()->SetTitleOffset(1.2);
-   Graph_mm16->GetXaxis()->SetTitleFont(42);
-   Graph_mm16->GetYaxis()->SetTitle("Uncertainty of Higgs Mass [MeV]");
-   Graph_mm16->GetYaxis()->CenterTitle(true);
-   Graph_mm16->GetYaxis()->SetLabelFont(42);
-   Graph_mm16->GetYaxis()->SetTitleSize(0.05);
-   Graph_mm16->GetYaxis()->SetTitleOffset(1.2);
-   Graph_mm16->GetYaxis()->SetTitleFont(42);
-   Graph_mm16->GetZaxis()->SetLabelFont(42);
-   Graph_mm16->GetZaxis()->SetTitleSize(0.05);
-   Graph_mm16->GetZaxis()->SetTitleOffset(1.2);
-   Graph_mm16->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_mm16);
+   Graph_mm133->SetLineColor(ci);
+   Graph_mm133->GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
+   Graph_mm133->GetXaxis()->CenterTitle(true);
+   Graph_mm133->GetXaxis()->SetLabelFont(42);
+   Graph_mm133->GetXaxis()->SetTitleSize(0.05);
+   Graph_mm133->GetXaxis()->SetTitleOffset(1.2);
+   Graph_mm133->GetXaxis()->SetTitleFont(42);
+   Graph_mm133->GetYaxis()->SetTitle("Uncertainty of Higgs Mass [MeV]");
+   Graph_mm133->GetYaxis()->CenterTitle(true);
+   Graph_mm133->GetYaxis()->SetLabelFont(42);
+   Graph_mm133->GetYaxis()->SetTitleSize(0.05);
+   Graph_mm133->GetYaxis()->SetTitleOffset(1.2);
+   Graph_mm133->GetYaxis()->SetTitleFont(42);
+   Graph_mm133->GetZaxis()->SetLabelFont(42);
+   Graph_mm133->GetZaxis()->SetTitleSize(0.05);
+   Graph_mm133->GetZaxis()->SetTitleOffset(1.2);
+   Graph_mm133->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_mm133);
    
    graph->Draw(" l");
    
-   Double_t em2_fx7[2] = {
+   Double_t em2_fx34[2] = {
    0,
    0.36};
-   Double_t em2_fy7[2] = {
-   24.57273,
-   24.57273};
-   graph = new TGraph(2,em2_fx7,em2_fy7);
+   Double_t em2_fy34[2] = {
+   33.01848,
+   33.01848};
+   graph = new TGraph(2,em2_fx34,em2_fy34);
    graph->SetName("em2");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -152,37 +152,37 @@ void massError()
    graph->SetLineStyle(2);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_em27 = new TH1F("Graph_em27","",100,0,0.396);
-   Graph_em27->SetMinimum(24.47273);
-   Graph_em27->SetMaximum(25.67273);
-   Graph_em27->SetDirectory(0);
-   Graph_em27->SetStats(0);
+   TH1F *Graph_em234 = new TH1F("Graph_em234","",100,0,0.396);
+   Graph_em234->SetMinimum(32.91848);
+   Graph_em234->SetMaximum(34.11848);
+   Graph_em234->SetDirectory(0);
+   Graph_em234->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_em27->SetLineColor(ci);
-   Graph_em27->GetXaxis()->SetLabelFont(42);
-   Graph_em27->GetXaxis()->SetTitleSize(0.05);
-   Graph_em27->GetXaxis()->SetTitleOffset(1.2);
-   Graph_em27->GetXaxis()->SetTitleFont(42);
-   Graph_em27->GetYaxis()->SetLabelFont(42);
-   Graph_em27->GetYaxis()->SetTitleSize(0.05);
-   Graph_em27->GetYaxis()->SetTitleOffset(1.2);
-   Graph_em27->GetYaxis()->SetTitleFont(42);
-   Graph_em27->GetZaxis()->SetLabelFont(42);
-   Graph_em27->GetZaxis()->SetTitleSize(0.05);
-   Graph_em27->GetZaxis()->SetTitleOffset(1.2);
-   Graph_em27->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_em27);
+   Graph_em234->SetLineColor(ci);
+   Graph_em234->GetXaxis()->SetLabelFont(42);
+   Graph_em234->GetXaxis()->SetTitleSize(0.05);
+   Graph_em234->GetXaxis()->SetTitleOffset(1.2);
+   Graph_em234->GetXaxis()->SetTitleFont(42);
+   Graph_em234->GetYaxis()->SetLabelFont(42);
+   Graph_em234->GetYaxis()->SetTitleSize(0.05);
+   Graph_em234->GetYaxis()->SetTitleOffset(1.2);
+   Graph_em234->GetYaxis()->SetTitleFont(42);
+   Graph_em234->GetZaxis()->SetLabelFont(42);
+   Graph_em234->GetZaxis()->SetTitleSize(0.05);
+   Graph_em234->GetZaxis()->SetTitleOffset(1.2);
+   Graph_em234->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_em234);
    
    graph->Draw(" l");
    
-   Double_t mm2_fx8[2] = {
+   Double_t mm2_fx35[2] = {
    0,
    0.36};
-   Double_t mm2_fy8[2] = {
-   6.265809,
-   6.265809};
-   graph = new TGraph(2,mm2_fx8,mm2_fy8);
+   Double_t mm2_fy35[2] = {
+   6.26724,
+   6.26724};
+   graph = new TGraph(2,mm2_fx35,mm2_fy35);
    graph->SetName("mm2");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -192,31 +192,31 @@ void massError()
    graph->SetLineStyle(2);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_mm28 = new TH1F("Graph_mm28","",100,0,0.396);
-   Graph_mm28->SetMinimum(6.165809);
-   Graph_mm28->SetMaximum(7.365809);
-   Graph_mm28->SetDirectory(0);
-   Graph_mm28->SetStats(0);
+   TH1F *Graph_mm235 = new TH1F("Graph_mm235","",100,0,0.396);
+   Graph_mm235->SetMinimum(6.16724);
+   Graph_mm235->SetMaximum(7.36724);
+   Graph_mm235->SetDirectory(0);
+   Graph_mm235->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_mm28->SetLineColor(ci);
-   Graph_mm28->GetXaxis()->SetLabelFont(42);
-   Graph_mm28->GetXaxis()->SetTitleSize(0.05);
-   Graph_mm28->GetXaxis()->SetTitleOffset(1.2);
-   Graph_mm28->GetXaxis()->SetTitleFont(42);
-   Graph_mm28->GetYaxis()->SetLabelFont(42);
-   Graph_mm28->GetYaxis()->SetTitleSize(0.05);
-   Graph_mm28->GetYaxis()->SetTitleOffset(1.2);
-   Graph_mm28->GetYaxis()->SetTitleFont(42);
-   Graph_mm28->GetZaxis()->SetLabelFont(42);
-   Graph_mm28->GetZaxis()->SetTitleSize(0.05);
-   Graph_mm28->GetZaxis()->SetTitleOffset(1.2);
-   Graph_mm28->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_mm28);
+   Graph_mm235->SetLineColor(ci);
+   Graph_mm235->GetXaxis()->SetLabelFont(42);
+   Graph_mm235->GetXaxis()->SetTitleSize(0.05);
+   Graph_mm235->GetXaxis()->SetTitleOffset(1.2);
+   Graph_mm235->GetXaxis()->SetTitleFont(42);
+   Graph_mm235->GetYaxis()->SetLabelFont(42);
+   Graph_mm235->GetYaxis()->SetTitleSize(0.05);
+   Graph_mm235->GetYaxis()->SetTitleOffset(1.2);
+   Graph_mm235->GetYaxis()->SetTitleFont(42);
+   Graph_mm235->GetZaxis()->SetLabelFont(42);
+   Graph_mm235->GetZaxis()->SetTitleSize(0.05);
+   Graph_mm235->GetZaxis()->SetTitleOffset(1.2);
+   Graph_mm235->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_mm235);
    
    graph->Draw(" l");
    
-   Double_t com_fx9[10] = {
+   Double_t com_fx36[10] = {
    0,
    0.04,
    0.08,
@@ -227,18 +227,18 @@ void massError()
    0.28,
    0.32,
    0.36};
-   Double_t com_fy9[10] = {
-   3.721766,
-   3.928367,
-   4.27958,
-   4.705237,
-   4.837141,
-   4.966261,
-   5.098601,
-   5.22121,
-   5.327449,
-   5.453036};
-   graph = new TGraph(10,com_fx9,com_fy9);
+   Double_t com_fy36[10] = {
+   3.933055,
+   4.05748,
+   4.217944,
+   4.525109,
+   4.760682,
+   4.671434,
+   4.840208,
+   5.017924,
+   5.193135,
+   5.220666};
+   graph = new TGraph(10,com_fx36,com_fy36);
    graph->SetName("com");
    graph->SetTitle("");
    graph->SetFillStyle(1000);
@@ -247,27 +247,27 @@ void massError()
    graph->SetLineColor(ci);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_com9 = new TH1F("Graph_com9","",100,0,0.396);
-   Graph_com9->SetMinimum(3.548639);
-   Graph_com9->SetMaximum(5.626163);
-   Graph_com9->SetDirectory(0);
-   Graph_com9->SetStats(0);
+   TH1F *Graph_com36 = new TH1F("Graph_com36","",100,0,0.396);
+   Graph_com36->SetMinimum(3.804293);
+   Graph_com36->SetMaximum(5.349427);
+   Graph_com36->SetDirectory(0);
+   Graph_com36->SetStats(0);
 
    ci = TColor::GetColor("#000099");
-   Graph_com9->SetLineColor(ci);
-   Graph_com9->GetXaxis()->SetLabelFont(42);
-   Graph_com9->GetXaxis()->SetTitleSize(0.05);
-   Graph_com9->GetXaxis()->SetTitleOffset(1.2);
-   Graph_com9->GetXaxis()->SetTitleFont(42);
-   Graph_com9->GetYaxis()->SetLabelFont(42);
-   Graph_com9->GetYaxis()->SetTitleSize(0.05);
-   Graph_com9->GetYaxis()->SetTitleOffset(1.2);
-   Graph_com9->GetYaxis()->SetTitleFont(42);
-   Graph_com9->GetZaxis()->SetLabelFont(42);
-   Graph_com9->GetZaxis()->SetTitleSize(0.05);
-   Graph_com9->GetZaxis()->SetTitleOffset(1.2);
-   Graph_com9->GetZaxis()->SetTitleFont(42);
-   graph->SetHistogram(Graph_com9);
+   Graph_com36->SetLineColor(ci);
+   Graph_com36->GetXaxis()->SetLabelFont(42);
+   Graph_com36->GetXaxis()->SetTitleSize(0.05);
+   Graph_com36->GetXaxis()->SetTitleOffset(1.2);
+   Graph_com36->GetXaxis()->SetTitleFont(42);
+   Graph_com36->GetYaxis()->SetLabelFont(42);
+   Graph_com36->GetYaxis()->SetTitleSize(0.05);
+   Graph_com36->GetYaxis()->SetTitleOffset(1.2);
+   Graph_com36->GetYaxis()->SetTitleFont(42);
+   Graph_com36->GetZaxis()->SetLabelFont(42);
+   Graph_com36->GetZaxis()->SetTitleSize(0.05);
+   Graph_com36->GetZaxis()->SetTitleOffset(1.2);
+   Graph_com36->GetZaxis()->SetTitleFont(42);
+   graph->SetHistogram(Graph_com36);
    
    graph->Draw(" l");
    

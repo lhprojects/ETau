@@ -15,8 +15,8 @@
 
 
 bool const FULL_SIMULATION = 1;
-
 bool const SMEAR_SQRTS = 1;
+bool GAUS_FIT = 0;
 double const sqrts_sigma1 = 1.34E-3;
 double const sqrts_sigma2 = 1.34E-3;
 
@@ -26,6 +26,8 @@ double fsr1[4];
 double fsr2[4];
 double E1[4];
 double E2[4];
+double e1[4];
+double e2[4];
 double bs1[4];
 double bs2[4];
 double rc_e1[4];
@@ -96,29 +98,77 @@ void Smear(double a, double trkRes) {
     }
 }
 
+
+//
+// The "crystalball" function for ROOT 5.x (mimics ROOT 6.x).
+//
+// Create the "crystalball" TF1 somewhere in your source code using:
+// double xmin = 3., xmax = 8.; // whatever you need
+// TF1 *crystalball = new TF1("crystalball", crystalball_function, xmin, xmax, 5);
+// crystalball->SetParNames("Constant", "Mean", "Sigma", "Alpha", "N");
+// crystalball->SetTitle("crystalball"); // not strictly necessary
+//
+
+// #include "TMath.h"
+#include <cmath>
+
+// see math/mathcore/src/PdfFuncMathCore.cxx in ROOT 6.x
+double crystalball_function(double x, double alpha, double n, double sigma, double mean) {
+  // evaluate the crystal ball function
+  if (sigma < 0.)     return 0.;
+  double z = (x - mean)/sigma;
+  if (alpha < 0) z = -z;
+  double abs_alpha = std::abs(alpha);
+  // double C = n/abs_alpha * 1./(n-1.) * std::exp(-alpha*alpha/2.);
+  // double D = std::sqrt(M_PI/2.)*(1.+ROOT::Math::erf(abs_alpha/std::sqrt(2.)));
+  // double N = 1./(sigma*(C+D));
+  if (z  > - abs_alpha)
+    return std::exp(- 0.5 * z * z);
+  else {
+    //double A = std::pow(n/abs_alpha,n) * std::exp(-0.5*abs_alpha*abs_alpha);
+    double nDivAlpha = n/abs_alpha;
+    double AA =  std::exp(-0.5*abs_alpha*abs_alpha);
+    double B = nDivAlpha -abs_alpha;
+    double arg = nDivAlpha/(B-z);
+    return AA * std::pow(arg,n);
+  }
+}
+
+double crystalball_function(const double *x, const double *p) {
+  // if ((!x) || (!p)) return 0.; // just a precaution
+  // [Constant] * ROOT::Math::crystalball_function(x, [Alpha], [N], [Sigma], [Mean])
+  return (p[0] * crystalball_function(x[0], p[3], p[4], p[2], p[1]));
+}
+
+double crystalball_bkg_function(const double *x, const double *p) {
+  // if ((!x) || (!p)) return 0.; // just a precaution
+  // [Constant] * ROOT::Math::crystalball_function(x, [Alpha], [N], [Sigma], [Mean])
+  return (p[0] * crystalball_function(x[0], p[3], p[4], p[2], p[1])) + p[5];
+}
+
 void Fit(TH1D *h, char const *output,
  char const *xtitle, double bkg_hint_NevtsInGeV,
- double &width, double &mass_uncertainty, double &xsection, bool first_call)
+ double &width, double &mass_uncertainty, double &Ns, bool first_call, bool last_call)
 {
-    TF1 *ff = new TF1("", "gaus(0) + [3]", 120, 126);
-    ff->SetParameters(100, 125, 0.5, bkg_hint_NevtsInGeV * 20 / h->GetNbinsX());
-    ff->SetParNames("C", "Mean", "Sigma", "Bkg");
+    TF1 *ff;
+    if(GAUS_FIT) {
+        ff = new TF1("", "gaus(0) + [3]", 120, 126);
+        ff->SetParNames("C", "Mean", "Sigma", "Bkg");
+        ff->SetParameters(1000, 125, 0.4, bkg_hint_NevtsInGeV * 20 / h->GetNbinsX());
+        if (bkg_hint_NevtsInGeV == 0)
+            ff->FixParameter(3, 0);
+    } else {
+        ff = new TF1("", crystalball_bkg_function, 120, 140, 6);
+        ff->SetParNames("C", "Mean", "Sigma", "Alpha", "N", "Bkg");
+        ff->SetParameters(1000, 125.5, 0.4, -0.5, 0.7, bkg_hint_NevtsInGeV * 20 / h->GetNbinsX());
+        if (bkg_hint_NevtsInGeV == 0)
+            ff->FixParameter(5, 0);
+    }
+    ff->SetNpx(1000);
     h->Fit(ff, "R Q");
     width = ff->GetParameter(2);
     mass_uncertainty = ff->GetParError(1);
-    printf("mass uncertainty %f\n", mass_uncertainty);
-    printf("width %f\n", width);
-
-    TF1 sig("", "[0]*gaus(1) + [4]", 120, 126);
-    sig.SetParNames("Sig", "C", "Mean", "Sigma", "Bkg");
-    sig.SetParameter(0, 1);
-    sig.FixParameter(1, ff->GetParameter(0));
-    sig.FixParameter(2, ff->GetParameter(1));
-    sig.FixParameter(3, ff->GetParameter(2));
-    sig.FixParameter(4, ff->GetParameter(3));
-    h->Fit(&sig, "R Q");
-    xsection =  sig.GetParError(0);
-    printf("x-section %f\n", xsection);
+    Ns = ff->GetParameter(0) * width * sqrt(2 * 3.1415);
 
     TCanvas cvs;
     h->GetYaxis()->SetTitle("Events / 0.2GeV");
@@ -128,14 +178,27 @@ void Fit(TH1D *h, char const *output,
     ff->SetLineColor(kBlue);
     ff->SetLineWidth(2);
 
-    TF1 gaus("", "gaus(0)", 120, 126);
-    gaus.SetParameters(ff->GetParameters());
-    gaus.Draw("SAME");
+    TF1 *signal_alone = 0;
+    if (GAUS_FIT)
+    {
+        signal_alone = new TF1("", "gaus(0)", 120, 126);
+    }
+    else
+    {
+        signal_alone = new TF1("", crystalball_bkg_function, 120, 140, 5);
+    }
+    signal_alone->SetParameters(ff->GetParameters());
+    signal_alone->SetNpx(1000);
+    signal_alone->Draw("SAME");
 
     if (first_call)
-        cvs.Print(("Gaus" + std::string(output) + ".pdf(").c_str());
+        cvs.Print(("FitCurve_" + std::string(output) + ".pdf(").c_str());
+    else if (last_call)
+        cvs.Print(("FitCurve_" + std::string(output) + ".pdf)").c_str());
     else
-        cvs.Print(("Gaus" + std::string(output) + ".pdf").c_str());
+        cvs.Print(("FitCurve_" + std::string(output) + ".pdf").c_str());
+    delete signal_alone;
+    delete ff;
 }
 
 void Plot(char const *name, char const *output, double trkRes, double bkg, double nExp, TGraph *&grWidth, TGraph *&grWidth2, TGraph *&grMassErr, TGraph *&grMassErr2) {
@@ -145,6 +208,7 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
     TTree * tree = (TTree*)f->Get("evts");
     double nevts = tree->GetEntries();
     double rc_nevts = 0;
+    double tr_nevts = 0;
 
     double Ecms;
     bool RCAvaliable = false;
@@ -175,22 +239,16 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
     TH1D hrecE("","", Nbins, 120, 140);
     TH1D hrecEB("","", Nbins, 120, 140);
 
-    TH1D hrecEB1("","", Nbins, 120, 140);
-    TH1D hrecEB2("","", Nbins, 120, 140);
-    TH1D hrecEB3("","", Nbins, 120, 140);
-    TH1D hrecEB4("","", Nbins, 120, 140);
-    TH1D hrecEB5("","", Nbins, 120, 140);
-
     TH2D hdrecd1("","", 100, -5E-3, +5E-3, 100, -1, 1);
 
     int const NBMR = 10;
     TH1D *hrecEBs[NBMR];
-    TH1D *hrecEs[NBMR];
     TH1D *hrecRCE = new TH1D("","", Nbins, 120, 140);
-  
+
+    TH1D *hrecEs = new TH1D("", "", Nbins, 120, 140);
+
     for(int i =0; i < sizeof(hrecEBs)/sizeof(void*); ++i) {
         hrecEBs[i] = new TH1D("", "", Nbins, 120, 140);
-        hrecEs[i] = new TH1D("", "", Nbins, 120, 140);
     }
 
     double da = 0.04;
@@ -203,6 +261,10 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
     for (int i = 0; i < (int)tree->GetEntries(); ++i)
     {
         tree->GetEntry(i);
+        for(int i = 0; i < 4; ++i) {
+            e1[i] = E1[i] - bs1[i];
+            e2[i] = E2[i] - bs2[i];
+        }
         //if(i%2 == 0) continue;
 
         hp.Fill(isr1[0] + isr2[0] + fsr1[0] + fsr2[0] + bs1[0] + bs2[0]);
@@ -236,88 +298,60 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
             pz = e1_[3] + e2_[3];
             hrecE.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
-
-            Smear(0, trkRes);
-            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-            hrecEB1.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-
-            Smear(0.05, trkRes);
-            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-            hrecEB2.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-
-
-            Smear(0.10, trkRes);
-            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-            hrecEB3.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-
-            Smear(0.20, trkRes);
-            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-            hrecEB4.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-
-            Smear(0.40, trkRes);
-            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-            hrecEB5.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-
-            for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
+            do
             {
-                Smear(i * da, trkRes);
-                en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-                px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-                py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-                pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-                if (SMEAR_SQRTS)
-                {
-                    SmearEnergySpread(en, px, py, pz, Ecms);
-                }
-                hrecEBs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+                Smear(0, trkRes);
                 en = e1_[0] + e2_[0];
                 px = e1_[1] + e2_[1];
                 py = e1_[2] + e2_[2];
                 pz = e1_[3] + e2_[3];
+
+                if (e1[0] == 0)
+                    continue;
+                if (e2[0] == 0)
+                    continue;
+                if (sqrt(px * px + py * py) < 20)
+                    continue;
+                TLorentzVector v4(px, py, pz, en);
+                TLorentzVector inc(0, 0, 0, Ecms);
+                if (v4.M() < 80 || v4.M() > 100)
+                    continue;
+                if ((inc - v4).M() < 120 && (inc - v4).M() > 150)
+                    continue;
+                double phi1 = TVector3(e1_[1], e1_[2], e1_[3]).Phi();
+                double phi2 = TVector3(e2_[1], e2_[2], e2_[3]).Phi();
+                double phi = fabs(phi2 - phi1);
+                phi *= 180 / 3.1415926;
+                if (phi > 180)
+                    phi -= 180;
+                if (phi > 175)
+                    continue;
+
+                tr_nevts += 1;
+
                 if (SMEAR_SQRTS)
-                {
                     SmearEnergySpread(en, px, py, pz, Ecms);
+
+                hrecEs->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+                for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
+                {
+                    Smear(da * i, trkRes);
+                    en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+                    px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+                    py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+                    pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
+                    if (SMEAR_SQRTS)
+                        SmearEnergySpread(en, px, py, pz, Ecms);
+                    hrecEBs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
                 }
 
-                hrecEs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-
-
-            }
+            } while (false);
 
             if(RCAvaliable) {
                 en = rc_e1[0] + rc_e2[0];
                 px = rc_e1[1] + rc_e2[1];
                 py = rc_e1[2] + rc_e2[2];
                 pz = rc_e1[3] + rc_e2[3];
-
-                double m1 = TLorentzVector(px, py, pz, Ecms - en).M();
-
-                if(SMEAR_SQRTS) {
-                    
-                    SmearEnergySpread(en, px, py, pz, Ecms);
-                    double delta1 = sqrts_sigma1 * r1;
-                    double delta2 = sqrts_sigma2 * r2;
-                    double dm = -2*Ecms*(0.5*(delta1+delta2)*(Ecms-en)+0.5*(delta1-delta2)*pz)/(2*m1);
-
-                    double m2 = TLorentzVector(px, py, pz, Ecms - en).M();
-                    //printf("%f %f %f\n", m1, dm, m2 - m1);
-                    hdrecd1.Fill(delta1, m2 - m1);
-                }
 
                 do {
                     if (rc_e1[0] == 0)
@@ -339,6 +373,20 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
                     if(phi > 180) phi -= 180;
                     if(phi > 175) continue;
 
+                    if (SMEAR_SQRTS)
+                    {
+
+                        double m1 = TLorentzVector(px, py, pz, Ecms - en).M();
+                        SmearEnergySpread(en, px, py, pz, Ecms);
+                        double delta1 = sqrts_sigma1 * r1;
+                        double delta2 = sqrts_sigma2 * r2;
+                        double dm = -2 * Ecms * (0.5 * (delta1 + delta2) * (Ecms - en) + 0.5 * (delta1 - delta2) * pz) / (2 * m1);
+
+                        double m2 = TLorentzVector(px, py, pz, Ecms - en).M();
+                        //printf("%f %f %f\n", m1, dm, m2 - m1);
+                        hdrecd1.Fill(delta1, m2 - m1);
+                    }
+
                     hrecRCE->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
                     rc_nevts += 1;
 
@@ -357,92 +405,46 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
     // scale the signal
 
     //double weight = 1;
-    double weight = nExp/nevts;
-    hrecRCE->Scale(weight);
+    hrecRCE->Scale(nExp / nevts);
 
-    weight *= rc_nevts / nevts;
-    printf("eff. %f\n", rc_nevts/nevts);
+    double eff = rc_nevts / nevts;
+    printf("rc eff. %f\n", eff);
+    printf("tr eff. %f\n", tr_nevts / nevts);
 
-    hrec.Scale(weight);
-    hrecE.Scale(weight);
-    hrecEB.Scale(weight);
-    hrecEB1.Scale(weight);
-    hrecEB2.Scale(weight);
-    hrecEB3.Scale(weight);
-    hrecEB4.Scale(weight);
-    hrecEB5.Scale(weight);
-
+    hrec.Scale(nExp * eff / nevts);
+    hrecE.Scale(nExp * eff / nevts);
+    hrecEB.Scale(nExp * eff / nevts);
+    hrecEs->Scale(nExp * eff / tr_nevts);
     for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
     {
-        hrecEBs[i]->Scale(weight);
-        hrecEs[i]->Scale(weight);
+        hrecEBs[i]->Scale(nExp * eff / tr_nevts);
     }
 
-
-    // add fake backgrounds
     // add fake backgrounds
     for (int b = 1; b <= hrecEBs[0]->GetNbinsX(); ++b)
     {
-        double nb = gRandom->Poisson(bkg * hrecEBs[0]->GetBinWidth(b));
+        //double nb = gRandom->Poisson(bkg * hrecEBs[0]->GetBinWidth(b));
+        double nb = bkg * hrecEBs[0]->GetBinWidth(b);
         for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
         {
             hrecEBs[i]->AddBinContent(b, nb);
         }
     }
-    for (int b = 1; b <= hrecEs[0]->GetNbinsX(); ++b)
+    for (int b = 1; b <= hrecEs->GetNbinsX(); ++b)
     {
-        double nb = gRandom->Poisson(bkg * hrecEs[0]->GetBinWidth(b));
-        for (int i = 0; i < sizeof(hrecEs) / sizeof(void *); ++i)
-        {
-            hrecEs[i]->AddBinContent(b, nb);
-        }
-        hrecRCE->AddBinContent(b, nb); 
+        //double nb = gRandom->Poisson(bkg * hrecEs[0]->GetBinWidth(b));
+        double nb = bkg * hrecEBs[0]->GetBinWidth(b);
+        hrecEs->AddBinContent(b, nb);
+        hrecRCE->AddBinContent(b, nb);
     }
 
     // let error = sqrt(value)
     for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
     {
         hrecEBs[i]->Sumw2(false);
-        hrecEs[i]->Sumw2(false);
     }
+    hrecEs->Sumw2(false);
     hrecRCE->Sumw2(false);
-
-
-
-    {
-        TCanvas cvs;
-        hrecEB1.GetXaxis()->CenterTitle();
-        hrecEB1.GetXaxis()->SetTitle("Recoil(elec.+BS+FSR) (Resolution(electron) = 0.5%) [GeV]");
-        hrecEB1.SetMaximum(hrecEB.GetMaximum()*1.6);
-        hrecEB1.SetLineColor(kBlue);
-        hrecEB2.SetLineColor(kRed);
-        hrecEB3.SetLineColor(kGreen);
-        hrecEB4.SetLineColor(kViolet);
-        hrecEB5.SetLineColor(kBlack);
-        
-        hrecEB1.SetStats(false);
-        hrecEB1.Draw("HIST");
-
-        hrecEB1.Draw("HIST SAME");
-        hrecEB2.Draw("HIST SAME");
-        hrecEB3.Draw("HIST SAME");
-        hrecEB4.Draw("HIST SAME");
-        hrecEB5.Draw("HIST SAME");
-
-
-        TLegend leg(0.5, 0.65, 0.89, 0.89);
-        leg.SetBorderSize(0);
-        leg.SetFillColor(0);
-        leg.AddEntry(&hrecEB1, "Resolution(photon)=0.00/#sqrt{E}");
-        leg.AddEntry(&hrecEB2, "Resolution(photon)=0.05/#sqrt{E}");
-        leg.AddEntry(&hrecEB3, "Resolution(phton)=0.10/#sqrt{E}");
-        leg.AddEntry(&hrecEB4, "Resolution(phton)=0.20/#sqrt{E}");
-        leg.AddEntry(&hrecEB5, "Resolution(phton)=0.40/#sqrt{E}");
-        leg.Draw();
-
-
-        cvs.Print((std::string(output) + ".pdf(").c_str());
-    }
 
     {
         TGraph &sigma = *(new TGraph());
@@ -460,60 +462,35 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
 
         double width;
         double mass_uncertainty;
-        double xsection;
-        Fit(hrecRCE, output, "Full Simulation", bkg, width, mass_uncertainty, xsection, true);
+        double Ns;
+        Fit(hrecRCE, output, "Full Simulation", bkg, width, mass_uncertainty, Ns, true, false);
         if(FULL_SIMULATION) {
             sigma2.SetPoint(0, 0, width);
             sigma2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, width);
             massErr2.SetPoint(0, 0, 1000 * mass_uncertainty);
             massErr2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, 1000 * mass_uncertainty);
+
         }
-        Fit(hrecEs[0], output, "Fast Simulation", bkg, width, mass_uncertainty, xsection, false);
+        printf("mass uncertainty %f\n", mass_uncertainty);
+        printf("width %f\n", width);
+        printf("Ns %f\n", Ns);
+        Fit(hrecEs, output, "Fast Simulation", bkg, width, mass_uncertainty, Ns, false, false);
+        
         if(!FULL_SIMULATION) {
             sigma2.SetPoint(0, 0, width);
             sigma2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, width);
             massErr2.SetPoint(0, 0, 1000 * mass_uncertainty);
             massErr2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, 1000 * mass_uncertainty);
         }
+        printf("mass uncertainty %f\n", mass_uncertainty);
+        printf("width %f\n", width);
+        printf("Ns %f\n", Ns);
 
         for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
         {
-
-            {
-                TH1D *h = hrecEBs[i];
-                
-                TF1 *ff = new TF1("", "gaus(0) + [3]", 120, 126);
-                ff->SetParameters(100, 125, 0.8, bkg*20/Nbins);
-                ff->SetParNames("C", "Mean", "Sigma", "Bkg");
-                h->Fit(ff, "R Q");
-                int n = sigma.GetN();
-                sigma.SetPoint(n, i * da, ff->GetParameter(2));
-                mass.SetPoint(n, i * da, ff->GetParameter(1));
-                massErr.SetPoint(n, i * da, 1000*ff->GetParError(1));
-
-                TF1 sig("", "[0]*gaus(1) + [4]", 120, 126);
-                sig.SetParNames("Sig", "C", "Mean", "Sigma", "Bkg");
-                sig.SetParameter(0, 1);
-                sig.FixParameter(1, ff->GetParameter(0));
-                sig.FixParameter(2, ff->GetParameter(1));
-                sig.FixParameter(3, ff->GetParameter(2));
-                sig.FixParameter(4, ff->GetParameter(3));
-                h->Fit(&sig, "R Q");
-
-                TCanvas cvs;
-                h->GetYaxis()->SetTitle("Events / 0.2GeV");
-                h->SetMinimum(0);
-                h->Draw();
-                ff->SetLineColor(kBlue);
-                ff->SetLineWidth(2);
-
-                if (i + 1 == sizeof(hrecEBs) / sizeof(void *))
-                    cvs.Print(("Gaus" + std::string(output) + ".pdf)").c_str());
-                else
-                    cvs.Print(("Gaus" + std::string(output) + ".pdf").c_str());
-
-            }
-
+            Fit(hrecEBs[i], output, "Fast Simulation", bkg, width, mass_uncertainty, Ns, false, i + 1 == sizeof(hrecEBs) / sizeof(void *));
+            sigma.SetPoint(i, da*i, width);
+            massErr.SetPoint(i, da*i, 1000*mass_uncertainty);
         }
 
         {
@@ -526,7 +503,7 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
 
             sigma.Draw("AL");
             sigma.Draw("SAME L");
-            cvs.Print((std::string(output) + ".pdf").c_str());
+            cvs.Print((std::string(output) + ".pdf(").c_str());
         }
 
         if(0) {
@@ -635,15 +612,12 @@ void Draw() {
     TGraph *mm1 = NULL;
     TGraph *mm2 = NULL;
 
-    //Plot("eeH.root", "eeH", 1100*5, 7.04*5000*1.0, ew1, ew2, em1, em2);
-    //Plot("mumuH.root", "mumuH", 600*5, 6.77*5000*0.62, mw1, mw2, mm1, mm2);
 
-    //Plot("small_root/eeHsa.root", "eeH", 1100*5, 7.04*5000*0.5, ew1, ew2, em1, em2);
-    //Plot("small_root/mumuHsa.root", "mumuH", 600*5, 6.77*5000*0.62, mw1, mw2, mm1, mm2);
-
-    // 0.63/0.78 is for BDT
-    Plot("root/eeHa.root", "eeH", 2.64E-3, 3500/0.8, 7.04*5600*0.63/0.77, ew1, ew2, em1, em2);
-    Plot("root/mumuHa.root", "mumuH", 2.64E-3, 3200/0.8, 6.77*5600*0.63/0.77, mw1, mw2, mm1, mm2);
+    gRandom->SetSeed(234729479);
+    Plot("root/eeHa.root", "eeH", 3.8E-3, 3500/0.8, 7.04*5600, ew1, ew2, em1, em2);
+    Plot("root/mumuHa.root", "mumuH", 2.40E-3, 3200/0.8, 6.77*5600, mw1, mw2, mm1, mm2);
+    //Plot("root/eeHa.root", "eeH", 2.64E-3, 0, 7.04*5600*0.63/0.77, ew1, ew2, em1, em2);
+    //Plot("root/mumuHa.root", "mumuH", 2.64E-3, 0, 7.04*5600*0.63/0.77, mw1, mw2, mm1, mm2);
 
     if(ew1 && ew2 && mw1 && mw2) {
         TCanvas cvs;
