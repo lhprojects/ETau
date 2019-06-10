@@ -99,6 +99,33 @@ void Smear(double a, double trkRes) {
     }
 }
 
+bool Select(double e1[], double e2[], double Ecms) {
+    double en = e1[0] + e2[0];
+    double px = e1[1] + e2[1];
+    double py = e1[2] + e2[2];
+    double pz = e1[3] + e2[3];
+    if (e1[0] == 0)
+        return false;
+    if (e2[0] == 0)
+        return false;
+    if (sqrt(px * px + py * py) < 20)
+        return false;
+    TLorentzVector v4(px, py, pz, en);
+    TLorentzVector inc(0, 0, 0, Ecms);
+    if (v4.M() < 80 || v4.M() > 100)
+        return false;
+    if ((inc - v4).M() < 120 && (inc - v4).M() > 150)
+        return false;
+    double phi1 = TVector3(e1[1], e1[2], e1[3]).Phi();
+    double phi2 = TVector3(e2[1], e2[2], e2[3]).Phi();
+    double phi = fabs(phi2 - phi1);
+    phi *= 180 / 3.1415926;
+    if (phi > 180)
+        phi -= 180;
+    if (phi > 175)
+        return false;
+    return true;
+}
 
 void Fit(TH1D *h, char const *output,
  char const *xtitle, double bkg_hint_NevtsInGeV,
@@ -227,123 +254,76 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
 
         SetRnd();
 
+        Smear(0.17, trkRes);
+
+        double en = e1_[0] + e2_[0] + isr1_[0] + isr2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+        double px = e1_[1] + e2_[1] + isr1_[1] + isr2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+        double py = e1_[2] + e2_[2] + isr1_[2] + isr2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+        double pz = e1_[3] + e2_[3] + isr1_[3] + isr2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
+
+        htot.Fill(TLorentzVector(px, py, pz, en).M());
+        hrec.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+
+        en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+        px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+        py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+        pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
+        hrecEB.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+
+        en = e1_[0] + e2_[0];
+        px = e1_[1] + e2_[1];
+        py = e1_[2] + e2_[2];
+        pz = e1_[3] + e2_[3];
+        hrecE.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+
+        Smear(0, trkRes);
+        if (Select(e1_, e2_, Ecms))
         {
-            
-            Smear(0.17, trkRes);
-
-            double en = e1_[0] + e2_[0] + isr1_[0] + isr2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-            double px = e1_[1] + e2_[1] + isr1_[1] + isr2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-            double py = e1_[2] + e2_[2] + isr1_[2] + isr2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-            double pz = e1_[3] + e2_[3] + isr1_[3] + isr2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-
-            htot.Fill(TLorentzVector(px, py, pz, en).M());
-            hrec.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-
-            en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-            px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-            py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-            pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-            hrecEB.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-
             en = e1_[0] + e2_[0];
             px = e1_[1] + e2_[1];
             py = e1_[2] + e2_[2];
             pz = e1_[3] + e2_[3];
-            hrecE.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+            if (SMEAR_SQRTS)
+                SmearEnergySpread(en, px, py, pz, Ecms);
 
-            do
+            tr_nevts += 1;
+            hrecEs->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+            for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
             {
-                Smear(0, trkRes);
-                en = e1_[0] + e2_[0];
-                px = e1_[1] + e2_[1];
-                py = e1_[2] + e2_[2];
-                pz = e1_[3] + e2_[3];
-
-                if (e1[0] == 0)
-                    continue;
-                if (e2[0] == 0)
-                    continue;
-                if (sqrt(px * px + py * py) < 20)
-                    continue;
-                TLorentzVector v4(px, py, pz, en);
-                TLorentzVector inc(0, 0, 0, Ecms);
-                if (v4.M() < 80 || v4.M() > 100)
-                    continue;
-                if ((inc - v4).M() < 120 && (inc - v4).M() > 150)
-                    continue;
-                double phi1 = TVector3(e1_[1], e1_[2], e1_[3]).Phi();
-                double phi2 = TVector3(e2_[1], e2_[2], e2_[3]).Phi();
-                double phi = fabs(phi2 - phi1);
-                phi *= 180 / 3.1415926;
-                if (phi > 180)
-                    phi -= 180;
-                if (phi > 175)
-                    continue;
-
-                tr_nevts += 1;
-
+                Smear(da * i, trkRes);
+                en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
+                px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
+                py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
+                pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
                 if (SMEAR_SQRTS)
                     SmearEnergySpread(en, px, py, pz, Ecms);
+                hrecEBs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+            }
+        }
 
-                hrecEs->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-                for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
-                {
-                    Smear(da * i, trkRes);
-                    en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
-                    px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
-                    py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
-                    pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
-                    if (SMEAR_SQRTS)
-                        SmearEnergySpread(en, px, py, pz, Ecms);
-                    hrecEBs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-                }
-
-            } while (false);
-
-            if(RCAvaliable) {
+        if (RCAvaliable)
+        {
+            if (Select(rc_e1, rc_e2, Ecms))
+            {
                 en = rc_e1[0] + rc_e2[0];
                 px = rc_e1[1] + rc_e2[1];
                 py = rc_e1[2] + rc_e2[2];
                 pz = rc_e1[3] + rc_e2[3];
+                if (SMEAR_SQRTS)
+                {
+                    double m1 = TLorentzVector(px, py, pz, Ecms - en).M();
+                    SmearEnergySpread(en, px, py, pz, Ecms);
+                    double delta1 = sqrts_sigma1 * r1;
+                    double delta2 = sqrts_sigma2 * r2;
+                    double dm = -2 * Ecms * (0.5 * (delta1 + delta2) * (Ecms - en) + 0.5 * (delta1 - delta2) * pz) / (2 * m1);
 
-                do {
-                    if (rc_e1[0] == 0)
-                        continue;
-                    if (rc_e2[0] == 0)
-                        continue;
-                    if (sqrt(px * px + py * py) < 20)
-                        continue;
-                    TLorentzVector v4(px, py, pz, en);
-                    TLorentzVector inc(0, 0, 0, Ecms);
-                    if (v4.M() < 80 || v4.M() > 100)
-                        continue;
-                    if ((inc-v4).M() < 120 && (inc-v4).M() > 150)
-                        continue;
-                    double phi1 = TVector3(rc_e1[1], rc_e1[2], rc_e1[3]).Phi();
-                    double phi2 = TVector3(rc_e2[1], rc_e2[2], rc_e2[3]).Phi();
-                    double phi = fabs(phi2-phi1);
-                    phi *= 180/3.1415926;
-                    if(phi > 180) phi -= 180;
-                    if(phi > 175) continue;
+                    double m2 = TLorentzVector(px, py, pz, Ecms - en).M();
+                    //printf("%f %f %f\n", m1, dm, m2 - m1);
+                    hdrecd1.Fill(delta1, m2 - m1);
+                }
 
-                    if (SMEAR_SQRTS)
-                    {
-
-                        double m1 = TLorentzVector(px, py, pz, Ecms - en).M();
-                        SmearEnergySpread(en, px, py, pz, Ecms);
-                        double delta1 = sqrts_sigma1 * r1;
-                        double delta2 = sqrts_sigma2 * r2;
-                        double dm = -2 * Ecms * (0.5 * (delta1 + delta2) * (Ecms - en) + 0.5 * (delta1 - delta2) * pz) / (2 * m1);
-
-                        double m2 = TLorentzVector(px, py, pz, Ecms - en).M();
-                        //printf("%f %f %f\n", m1, dm, m2 - m1);
-                        hdrecd1.Fill(delta1, m2 - m1);
-                    }
-
-                    hrecRCE->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
-                    rc_nevts += 1;
-
-                } while(false);
+                hrecRCE->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+                rc_nevts += 1;
             }
         }
     }
