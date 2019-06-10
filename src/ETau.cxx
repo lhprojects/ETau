@@ -81,7 +81,7 @@ using namespace std;
 bool BeforeECal(double const *r) {
     //return true;
     double rho = sqrt(r[0]*r[0] + r[1]*r[1]);
-    if(rho < 1800/2 && fabs(r[2]) < 2300/2) {
+    if(rho < 1800/3 && fabs(r[2]) < 2300/3) {
         return true;
     }
     return false;
@@ -111,7 +111,7 @@ void CollectBS2(double *rx, double *ry, double *rz, double *en, int &n, int nmax
                     rx[n] = dau->getVertex()[0];
                     ry[n] = dau->getVertex()[1];
                     rz[n] = dau->getVertex()[2];
-                    //printf("photon %f %f %f\n", dau->getVertex()[0], dau->getVertex()[1], dau->getVertex()[2]);
+                    //printf("photon vtx %f %f %f\n", dau->getVertex()[0], dau->getVertex()[1], dau->getVertex()[2]);
                     n += 1;
                 }
             }
@@ -160,16 +160,18 @@ void CollectBS(double *bs, double &n, MCParticle *elec, int pdg, int level = 0) 
 
     for(int d = 0; d < (int)elec->getDaughters().size(); ++d) {
         MCParticle *dau = elec->getDaughters()[d];
-        if(abs(dau->getPDG()) == 22) { // gamma and before Ecal
-            if (BeforeECal(dau->getVertex()))
-            {
-                n += 1;
-                bs[0] += dau->getEnergy();
-                bs[1] += dau->getMomentum()[0];
-                bs[2] += dau->getMomentum()[1];
-                bs[3] += dau->getMomentum()[2];
-            }
-        } else if(subElec && abs(dau->getPDG()) == pdg && BeforeECal(dau->getVertex())) {
+
+        if(BeforeECal(dau->getVertex())) {
+            n += 1;
+            bs[0] += dau->getEnergy();
+            bs[1] += dau->getMomentum()[0];
+            bs[2] += dau->getMomentum()[1];
+            bs[3] += dau->getMomentum()[2];
+            for(int i = 0; i < level; ++i) printf("  ");
+            //printf("vtx %.1f %.1f %.1f %f\n", dau->getVertex()[0], dau->getVertex()[1], dau->getVertex()[2], dau->getEnergy());
+        }
+        else if (subElec && abs(dau->getPDG()) == pdg && BeforeECal(dau->getVertex()))
+        {
             CollectBS(bs, n, dau, pdg, level);
         }
     }
@@ -196,7 +198,8 @@ MCParticle *GetRealParticle(MCParticle *mcp) {
     }
     return mcp;
 }
-void Read(std::string rf, std::vector<std::string> const &files) {
+
+void Read(int sigPDG, std::string rf, std::vector<std::string> const &files) {
 
     TFile root(rf.c_str(), "RECREATE");
     TTree tree("evts", "evts");
@@ -236,8 +239,8 @@ void Read(std::string rf, std::vector<std::string> const &files) {
     // reconstruction
     double E_tot;
     double M_tot;
-    double E_Ps;   // electrons
-    double M_Ps;   // electrons
+    double RC_P1[4];   // electrons
+    double RC_P2[4];   // electrons
 
 
 
@@ -272,8 +275,8 @@ void Read(std::string rf, std::vector<std::string> const &files) {
 
     tree.Branch("E_tot", &E_tot, "E_tot/D");
     tree.Branch("M_tot", &M_tot, "M_tot/D");
-    tree.Branch("E_Ps", &E_Ps, "E_Ps/D");
-    tree.Branch("M_Ps", &M_Ps, "M_Ps/D");
+    tree.Branch("RC_P1", RC_P1, "RC_P1[4]/D");
+    tree.Branch("RC_P2", RC_P2, "RC_P2[4]/D");
 
     double nevt = 0;
     double pdg94 = 0;
@@ -313,8 +316,9 @@ void Read(std::string rf, std::vector<std::string> const &files) {
 
             E_tot = 0;
             M_tot = 0;  
-            E_Ps = 0;
-            M_Ps = 0;
+
+            for(int i = 0; i < 4; ++i) RC_P1[i] = 0;
+            for(int i = 0; i < 4; ++i) RC_P2[i] = 0;
 
             LCCollection *mccol = evt->getCollection("MCParticle");
             for (int i = 0; i < (int)mccol->getNumberOfElements(); ++i)
@@ -389,18 +393,36 @@ void Read(std::string rf, std::vector<std::string> const &files) {
                 try
                 {
                     LCCollection *abcol = evt->getCollection("ArborPFOs");
-                    for (int i = 0; i < (int)mccol->getNumberOfElements(); ++i)
+                    if(abcol) {
+                    for (int i = 0; i < (int)abcol->getNumberOfElements(); ++i)
                     {
                         ReconstructedParticle *abp = (ReconstructedParticle *)abcol->getElementAt(i);
                         int pdg = abp->getType();
-                        if (abs(pdg) == 11 || abs(pdg) == 13)
-                        { // parton electron
-                            E_Ps += abp->getEnergy();
+                        if (pdg == sigPDG)
+                        {
+                            if(abp->getEnergy() > RC_P1[0]) {
+                                RC_P1[0] = abp->getEnergy();
+                                RC_P1[1] = abp->getMomentum()[0];
+                                RC_P1[2] = abp->getMomentum()[1];
+                                RC_P1[3] = abp->getMomentum()[2];
+                            }
+                        }
+                        else if (pdg == -sigPDG)
+                        {
+                            if(abp->getEnergy() > RC_P2[0]) {
+                                RC_P2[0] = abp->getEnergy();
+                                RC_P2[1] = abp->getMomentum()[0];
+                                RC_P2[2] = abp->getMomentum()[1];
+                                RC_P2[3] = abp->getMomentum()[2];
+                            }
                         }
 
-                        printf("%d %f\n", i, abp->getEnergy());
+                        //printf("%d %d %f\n", i, pdg, abp->getEnergy());
+
                         E_tot += abp->getEnergy();
                     } // for elements
+
+                    }
                 }
                 catch (...)
                 {
@@ -480,13 +502,17 @@ std::vector<std::string> at_most(std::vector<std::string> vs, size_t n) {
 int main(int argc, char *argv[]) {
 
     SetStyle();
-    if(argc == 3) {   
+    if(argc == 4) {   
         std::vector<std::string> src;
-        src.push_back(argv[1]);
-        Read(argv[2], src);
+        int pdg;
+        sscanf(argv[1], "%d", &pdg);
+	printf("PDG %d\n", pdg);
+        src.push_back(argv[2]);
+        Read(pdg, argv[3], src);
     } else {
-        Read("eeH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe1e1h_X.e0.p0.whizard195", ".slcio"), 1));
-        Read("mumuH.root", at_most(files("/cefs/data/FullSim/CEPC240/CEPC_v4/higgs/E240.Pe2e2h_X.e0.p0.whizard195", ".slcio"), 1));
+        // a mistake in name *_small
+        Read(11, "eeH.root", at_most(files("/cefs/higgs/liangh/ETau/mumuH_small/reco", ".slcio"), 2));
+        Read(13, "mumuH.root", at_most(files("/cefs/higgs/liangh/ETau/eeH_small/reco", ".slcio"), 2));
     }
 
 

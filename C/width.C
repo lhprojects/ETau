@@ -1,11 +1,11 @@
 void width()
 {
 //=========Macro generated from canvas: c1_n2/c1_n2
-//=========  (Thu May 23 17:11:56 2019) by ROOT version 6.16/00
-   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",0,0,600,600);
+//=========  (Mon Jun 10 10:19:40 2019) by ROOT version 6.16/00
+   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",10,10,600,600);
    gStyle->SetOptStat(0);
    gStyle->SetOptTitle(0);
-   c1_n2->Range(-0.037125,0.2833133,0.210375,0.827194);
+   c1_n2->Range(-0.07425,-0.15,0.42075,0.85);
    c1_n2->SetFillColor(0);
    c1_n2->SetBorderMode(0);
    c1_n2->SetBorderSize(2);
@@ -18,26 +18,26 @@ void width()
    
    Double_t ew1_fx1[10] = {
    0,
-   0.02,
    0.04,
-   0.06,
    0.08,
-   0.1,
    0.12,
-   0.14,
    0.16,
-   0.18};
+   0.2,
+   0.24,
+   0.28,
+   0.32,
+   0.36};
    Double_t ew1_fy1[10] = {
-   0.387801,
-   0.4048329,
-   0.4373463,
-   0.4706852,
-   0.5012297,
-   0.5295096,
-   0.5569756,
-   0.5795985,
-   0.6004379,
-   0.6168566};
+   0.4118671,
+   0.4491232,
+   0.5023143,
+   0.5453052,
+   0.5797867,
+   0.6071323,
+   0.6289974,
+   0.6484996,
+   0.6668319,
+   0.6827351};
    TGraph *graph = new TGraph(10,ew1_fx1,ew1_fy1);
    graph->SetName("ew1");
    graph->SetTitle("");
@@ -49,8 +49,8 @@ void width()
    graph->SetLineColor(ci);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_ew11 = new TH1F("Graph_ew11","",100,0,0.198);
-   Graph_ew11->SetMinimum(0.3648954);
+   TH1F *Graph_ew11 = new TH1F("Graph_ew11","",100,0,0.396);
+   Graph_ew11->SetMinimum(0);
    Graph_ew11->SetMaximum(0.8);
    Graph_ew11->SetDirectory(0);
    Graph_ew11->SetStats(0);
@@ -79,26 +79,26 @@ void width()
    
    Double_t mw1_fx2[10] = {
    0,
-   0.02,
    0.04,
-   0.06,
    0.08,
-   0.1,
    0.12,
-   0.14,
    0.16,
-   0.18};
+   0.2,
+   0.24,
+   0.28,
+   0.32,
+   0.36};
    Double_t mw1_fy2[10] = {
-   0.4343097,
-   0.4359411,
-   0.4408644,
-   0.4470629,
-   0.4540722,
-   0.4591513,
-   0.4619611,
-   0.4644397,
-   0.4679231,
-   0.4710476};
+   0.414112,
+   0.4204904,
+   0.4312037,
+   0.4390273,
+   0.4443253,
+   0.4477443,
+   0.4499155,
+   0.4516876,
+   0.4536476,
+   0.4550351};
    graph = new TGraph(10,mw1_fx2,mw1_fy2);
    graph->SetName("mw1");
    graph->SetTitle("");
@@ -108,9 +108,9 @@ void width()
    graph->SetLineColor(ci);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_mw12 = new TH1F("Graph_mw12","",100,0,0.198);
-   Graph_mw12->SetMinimum(0.4306359);
-   Graph_mw12->SetMaximum(0.4747214);
+   TH1F *Graph_mw12 = new TH1F("Graph_mw12","",100,0,0.396);
+   Graph_mw12->SetMinimum(0.4100197);
+   Graph_mw12->SetMaximum(0.4591274);
    Graph_mw12->SetDirectory(0);
    Graph_mw12->SetStats(0);
 
@@ -138,10 +138,10 @@ void width()
    
    Double_t ew2_fx3[2] = {
    0,
-   0.18};
+   0.36};
    Double_t ew2_fy3[2] = {
-   0.5253997,
-   0.5253997};
+   0.5251267,
+   0.5251267};
    graph = new TGraph(2,ew2_fx3,ew2_fy3);
    graph->SetName("ew2");
    graph->SetTitle("");
@@ -152,9 +152,9 @@ void width()
    graph->SetLineStyle(2);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_ew23 = new TH1F("Graph_ew23","",100,0,0.198);
-   Graph_ew23->SetMinimum(0.4253997);
-   Graph_ew23->SetMaximum(1.6254);
+   TH1F *Graph_ew23 = new TH1F("Graph_ew23","",100,0,0.396);
+   Graph_ew23->SetMinimum(0.4251267);
+   Graph_ew23->SetMaximum(1.625127);
    Graph_ew23->SetDirectory(0);
    Graph_ew23->SetStats(0);
 
@@ -178,10 +178,10 @@ void width()
    
    Double_t mw2_fx4[2] = {
    0,
-   0.18};
+   0.36};
    Double_t mw2_fy4[2] = {
-   0.4609042,
-   0.4609042};
+   0.4367382,
+   0.4367382};
    graph = new TGraph(2,mw2_fx4,mw2_fy4);
    graph->SetName("mw2");
    graph->SetTitle("");
@@ -192,9 +192,9 @@ void width()
    graph->SetLineStyle(2);
    graph->SetLineWidth(2);
    
-   TH1F *Graph_mw24 = new TH1F("Graph_mw24","",100,0,0.198);
-   Graph_mw24->SetMinimum(0.3609042);
-   Graph_mw24->SetMaximum(1.560904);
+   TH1F *Graph_mw24 = new TH1F("Graph_mw24","",100,0,0.396);
+   Graph_mw24->SetMinimum(0.3367382);
+   Graph_mw24->SetMaximum(1.536738);
    Graph_mw24->SetDirectory(0);
    Graph_mw24->SetStats(0);
 

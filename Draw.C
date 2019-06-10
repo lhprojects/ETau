@@ -2,15 +2,23 @@
 #include <TTree.h>
 #include <TFile.h>
 #include <TH1D.h>
+#include <TH2D.h>
 #include <TCanvas.h>
 #include <TLorentzVector.h>
 #include <TLegend.h>
 #include <TGraph.h>
 #include <TGraphErrors.h>
 #include <TF1.h>
-
+#include <TStyle.h>
 #include <cmath>
 
+
+
+bool const FULL_SIMULATION = 1;
+
+bool const SMEAR_SQRTS = 1;
+double const sqrts_sigma1 = 1.34E-3;
+double const sqrts_sigma2 = 1.34E-3;
 
 double isr1[4];
 double isr2[4];
@@ -20,7 +28,8 @@ double E1[4];
 double E2[4];
 double bs1[4];
 double bs2[4];
-
+double rc_e1[4];
+double rc_e2[4];
 
 double isr1_[4];
 double isr2_[4];
@@ -31,7 +40,6 @@ double e2_[4];
 double bs1_[4];
 double bs2_[4];
 
-double const trkRes = 3.85E-3;
 
 void SmearPhoton(double *to, double *from, double a, double r) {
 
@@ -50,12 +58,28 @@ void SmearPhoton(double *to, double *from, double a, double r) {
 
 
 double rnd[8];
-
+double r1;
+double r2;
 void SetRnd() {
     for(int i = 0; i < 8; ++i)
         rnd[i] = gRandom->Gaus();
+    r1 = gRandom->Gaus();
+    r2 = gRandom->Gaus();
 }
-void Smear(double a) {
+
+void SmearEnergySpread(double &en, double &px, double &py, double &pz, double Ecms) {
+
+    double const delta1 = sqrts_sigma1 * r1;
+    double const delta2 = sqrts_sigma2 * r2;
+    double const beta = (delta1 - delta2) / 2;
+    double const en_ = en;
+    double const pz_ = pz;
+    en = en_ + beta * pz_;
+    pz = pz_ + beta * en_;
+    en += 0.5 * (delta1 + delta2) * Ecms;
+}
+
+void Smear(double a, double trkRes) {
 
 
     SmearPhoton(isr1_, isr1, a, rnd[0]);
@@ -72,13 +96,58 @@ void Smear(double a) {
     }
 }
 
-void Plot(char const *name, char const *output, double bkg, double nExp, TGraph *&grWidth, TGraph *&grWidth2, TGraph *&grMassErr, TGraph *&grMassErr2) {
+void Fit(TH1D *h, char const *output,
+ char const *xtitle, double bkg_hint_NevtsInGeV,
+ double &width, double &mass_uncertainty, double &xsection, bool first_call)
+{
+    TF1 *ff = new TF1("", "gaus(0) + [3]", 120, 126);
+    ff->SetParameters(100, 125, 0.5, bkg_hint_NevtsInGeV * 20 / h->GetNbinsX());
+    ff->SetParNames("C", "Mean", "Sigma", "Bkg");
+    h->Fit(ff, "R Q");
+    width = ff->GetParameter(2);
+    mass_uncertainty = ff->GetParError(1);
+    printf("mass uncertainty %f\n", mass_uncertainty);
+    printf("width %f\n", width);
+
+    TF1 sig("", "[0]*gaus(1) + [4]", 120, 126);
+    sig.SetParNames("Sig", "C", "Mean", "Sigma", "Bkg");
+    sig.SetParameter(0, 1);
+    sig.FixParameter(1, ff->GetParameter(0));
+    sig.FixParameter(2, ff->GetParameter(1));
+    sig.FixParameter(3, ff->GetParameter(2));
+    sig.FixParameter(4, ff->GetParameter(3));
+    h->Fit(&sig, "R Q");
+    xsection =  sig.GetParError(0);
+    printf("x-section %f\n", xsection);
+
+    TCanvas cvs;
+    h->GetYaxis()->SetTitle("Events / 0.2GeV");
+    h->GetXaxis()->SetTitle(xtitle);
+    h->SetMinimum(0);
+    h->Draw();
+    ff->SetLineColor(kBlue);
+    ff->SetLineWidth(2);
+
+    TF1 gaus("", "gaus(0)", 120, 126);
+    gaus.SetParameters(ff->GetParameters());
+    gaus.Draw("SAME");
+
+    if (first_call)
+        cvs.Print(("Gaus" + std::string(output) + ".pdf(").c_str());
+    else
+        cvs.Print(("Gaus" + std::string(output) + ".pdf").c_str());
+}
+
+void Plot(char const *name, char const *output, double trkRes, double bkg, double nExp, TGraph *&grWidth, TGraph *&grWidth2, TGraph *&grMassErr, TGraph *&grMassErr2) {
 
 
     TFile *f = new TFile(name);
     TTree * tree = (TTree*)f->Get("evts");
+    double nevts = tree->GetEntries();
+    double rc_nevts = 0;
 
     double Ecms;
+    bool RCAvaliable = false;
     tree->SetBranchAddress("ISR1", isr1);
     tree->SetBranchAddress("ISR2", isr2);
     tree->SetBranchAddress("FSR1", fsr1);
@@ -90,8 +159,13 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
     // E2 = e2 + bs2
     tree->SetBranchAddress("P1BS", bs1);
     tree->SetBranchAddress("P2BS", bs2);
-    tree->SetBranchAddress("EMC_cms", &Ecms);
-    
+    tree->SetBranchAddress("EMC_cms", &Ecms); 
+    RCAvaliable = tree->GetBranch("RC_P1") && tree->GetBranch("RC_P2");
+    if(RCAvaliable) {
+        tree->SetBranchAddress("RC_P1", rc_e1);
+        tree->SetBranchAddress("RC_P2", rc_e2);
+    }
+
     tree->GetEntry(0);
 
     TH1D htot("","", 2*(int)(Ecms + 20), 0, Ecms + 20);
@@ -107,15 +181,19 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
     TH1D hrecEB4("","", Nbins, 120, 140);
     TH1D hrecEB5("","", Nbins, 120, 140);
 
-    TH1D *hrecEBs[10];
-    TH1D *hrecEs[10];
+    TH2D hdrecd1("","", 100, -5E-3, +5E-3, 100, -1, 1);
+
+    int const NBMR = 10;
+    TH1D *hrecEBs[NBMR];
+    TH1D *hrecEs[NBMR];
+    TH1D *hrecRCE = new TH1D("","", Nbins, 120, 140);
   
     for(int i =0; i < sizeof(hrecEBs)/sizeof(void*); ++i) {
         hrecEBs[i] = new TH1D("", "", Nbins, 120, 140);
         hrecEs[i] = new TH1D("", "", Nbins, 120, 140);
     }
 
-    double da = 0.02;
+    double da = 0.04;
 
     TH1D hp("","",100, 0, 50);
     TH1D hfsr("","",100, 0, 50);
@@ -133,10 +211,10 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
         hisr.Fill(isr1[0] + isr2[0]);
 
         SetRnd();
+
         {
-
-
-            Smear(0.17);
+            
+            Smear(0.17, trkRes);
 
             double en = e1_[0] + e2_[0] + isr1_[0] + isr2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
             double px = e1_[1] + e2_[1] + isr1_[1] + isr2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
@@ -159,14 +237,14 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
             hrecE.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
 
-            Smear(0.00);
+            Smear(0, trkRes);
             en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
             px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
             py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
             pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB1.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
-            Smear(0.05);
+            Smear(0.05, trkRes);
             en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
             px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
             py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
@@ -174,21 +252,21 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
             hrecEB2.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
 
-            Smear(0.10);
+            Smear(0.10, trkRes);
             en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
             px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
             py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
             pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB3.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
-            Smear(0.20);
+            Smear(0.20, trkRes);
             en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
             px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
             py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
             pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
             hrecEB4.Fill(TLorentzVector(px, py, pz, Ecms - en).M());
 
-            Smear(0.40);
+            Smear(0.40, trkRes);
             en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
             px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
             py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
@@ -197,27 +275,93 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
 
             for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
             {
-                Smear(i * da);
+                Smear(i * da, trkRes);
                 en = e1_[0] + e2_[0] + fsr1_[0] + fsr2_[0] + bs1_[0] + bs2_[0];
                 px = e1_[1] + e2_[1] + fsr1_[1] + fsr2_[1] + bs1_[1] + bs2_[1];
                 py = e1_[2] + e2_[2] + fsr1_[2] + fsr2_[2] + bs1_[2] + bs2_[2];
                 pz = e1_[3] + e2_[3] + fsr1_[3] + fsr2_[3] + bs1_[3] + bs2_[3];
+                if (SMEAR_SQRTS)
+                {
+                    SmearEnergySpread(en, px, py, pz, Ecms);
+                }
                 hrecEBs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
                 en = e1_[0] + e2_[0];
                 px = e1_[1] + e2_[1];
                 py = e1_[2] + e2_[2];
                 pz = e1_[3] + e2_[3];
+                if (SMEAR_SQRTS)
+                {
+                    SmearEnergySpread(en, px, py, pz, Ecms);
+                }
+
                 hrecEs[i]->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+
+
+            }
+
+            if(RCAvaliable) {
+                en = rc_e1[0] + rc_e2[0];
+                px = rc_e1[1] + rc_e2[1];
+                py = rc_e1[2] + rc_e2[2];
+                pz = rc_e1[3] + rc_e2[3];
+
+                double m1 = TLorentzVector(px, py, pz, Ecms - en).M();
+
+                if(SMEAR_SQRTS) {
+                    
+                    SmearEnergySpread(en, px, py, pz, Ecms);
+                    double delta1 = sqrts_sigma1 * r1;
+                    double delta2 = sqrts_sigma2 * r2;
+                    double dm = -2*Ecms*(0.5*(delta1+delta2)*(Ecms-en)+0.5*(delta1-delta2)*pz)/(2*m1);
+
+                    double m2 = TLorentzVector(px, py, pz, Ecms - en).M();
+                    //printf("%f %f %f\n", m1, dm, m2 - m1);
+                    hdrecd1.Fill(delta1, m2 - m1);
+                }
+
+                do {
+                    if (rc_e1[0] == 0)
+                        continue;
+                    if (rc_e2[0] == 0)
+                        continue;
+                    if (sqrt(px * px + py * py) < 20)
+                        continue;
+                    TLorentzVector v4(px, py, pz, en);
+                    TLorentzVector inc(0, 0, 0, Ecms);
+                    if (v4.M() < 80 || v4.M() > 100)
+                        continue;
+                    if ((inc-v4).M() < 120 && (inc-v4).M() > 150)
+                        continue;
+                    double phi1 = TVector3(rc_e1[1], rc_e1[2], rc_e1[3]).Phi();
+                    double phi2 = TVector3(rc_e2[1], rc_e2[2], rc_e2[3]).Phi();
+                    double phi = fabs(phi2-phi1);
+                    phi *= 180/3.1415926;
+                    if(phi > 180) phi -= 180;
+                    if(phi > 175) continue;
+
+                    hrecRCE->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+                    rc_nevts += 1;
+
+                } while(false);
             }
         }
     }
 
+
+    if(SMEAR_SQRTS) {
+        TCanvas cvs;
+        hdrecd1.GetXaxis()->SetTitle("#delta_{1}");
+        hdrecd1.Draw();
+        cvs.Print("DRecD1.pdf");
+    }
     // scale the signal
-    double nevts = tree->GetEntries();
-    //double scale = sqrt(nevts/nExp);
+
     //double weight = 1;
-    double scale = 1;
     double weight = nExp/nevts;
+    hrecRCE->Scale(weight);
+
+    weight *= rc_nevts / nevts;
+    printf("eff. %f\n", rc_nevts/nevts);
 
     hrec.Scale(weight);
     hrecE.Scale(weight);
@@ -233,6 +377,7 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
         hrecEBs[i]->Scale(weight);
         hrecEs[i]->Scale(weight);
     }
+
 
     // add fake backgrounds
     // add fake backgrounds
@@ -251,6 +396,7 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
         {
             hrecEs[i]->AddBinContent(b, nb);
         }
+        hrecRCE->AddBinContent(b, nb); 
     }
 
     // let error = sqrt(value)
@@ -259,6 +405,8 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
         hrecEBs[i]->Sumw2(false);
         hrecEs[i]->Sumw2(false);
     }
+    hrecRCE->Sumw2(false);
+
 
 
     {
@@ -310,6 +458,23 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
 
         TGraph mass;
 
+        double width;
+        double mass_uncertainty;
+        double xsection;
+        Fit(hrecRCE, output, "Full Simulation", bkg, width, mass_uncertainty, xsection, true);
+        if(FULL_SIMULATION) {
+            sigma2.SetPoint(0, 0, width);
+            sigma2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, width);
+            massErr2.SetPoint(0, 0, 1000 * mass_uncertainty);
+            massErr2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, 1000 * mass_uncertainty);
+        }
+        Fit(hrecEs[0], output, "Fast Simulation", bkg, width, mass_uncertainty, xsection, false);
+        if(!FULL_SIMULATION) {
+            sigma2.SetPoint(0, 0, width);
+            sigma2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, width);
+            massErr2.SetPoint(0, 0, 1000 * mass_uncertainty);
+            massErr2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, 1000 * mass_uncertainty);
+        }
 
         for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
         {
@@ -324,7 +489,7 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
                 int n = sigma.GetN();
                 sigma.SetPoint(n, i * da, ff->GetParameter(2));
                 mass.SetPoint(n, i * da, ff->GetParameter(1));
-                massErr.SetPoint(n, i * da, scale*1000*ff->GetParError(1));
+                massErr.SetPoint(n, i * da, 1000*ff->GetParError(1));
 
                 TF1 sig("", "[0]*gaus(1) + [4]", 120, 126);
                 sig.SetParNames("Sig", "C", "Mean", "Sigma", "Bkg");
@@ -341,48 +506,14 @@ void Plot(char const *name, char const *output, double bkg, double nExp, TGraph 
                 h->Draw();
                 ff->SetLineColor(kBlue);
                 ff->SetLineWidth(2);
-                char b[100];
-                sprintf(b, "%sTryGaus_a%f.png", output, i * da);
-                cvs.Print(b);
+
+                if (i + 1 == sizeof(hrecEBs) / sizeof(void *))
+                    cvs.Print(("Gaus" + std::string(output) + ".pdf)").c_str());
+                else
+                    cvs.Print(("Gaus" + std::string(output) + ".pdf").c_str());
 
             }
 
-            if(i == 0) {
-                TH1D *h = hrecEs[i];
-                TF1 *ff = new TF1("", "gaus(0) + [3]", 120, 126);
-                ff->SetParameters(100, 125, 1, bkg*20/Nbins);
-                ff->SetParNames("C", "Mean", "Sigma", "Bkg");
-                h->Fit(ff, "R");
-
-                TF1 sig("", "[0]*gaus(1) + [4]", 120, 126);
-                sig.SetParNames("Sig", "C", "Mean", "Sigma", "Bkg");
-                sig.SetParameter(0, 1);
-                sig.FixParameter(1, ff->GetParameter(0));
-                sig.FixParameter(2, ff->GetParameter(1));
-                sig.FixParameter(3, ff->GetParameter(2));
-                sig.FixParameter(4, ff->GetParameter(3));
-                h->Fit(&sig, "R");
-                printf("sig %f\n", sig.GetParError(0));
-
-                sigma2.SetPoint(0, 0, ff->GetParameter(2));
-                sigma2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *)-1)*da, ff->GetParameter(2));
-                massErr2.SetPoint(0, 0, scale*1000*ff->GetParError(1));
-                massErr2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *)-1)*da, scale*1000*ff->GetParError(1));
-                
-                TCanvas cvs;
-                //h->Scale(nExp/nevts);
-                h->GetYaxis()->SetTitle("Events / 0.2GeV");
-                h->SetMinimum(0);
-                h->Draw();
-                ff->SetLineColor(kBlue); 
-                ff->SetLineWidth(2);
-
-                TF1 gaus("", "gaus(0)", 120, 126);
-                gaus.SetParameters(ff->GetParameters());
-                gaus.Draw("SAME");
-
-                cvs.Print(("TryGaus2_" + std::string(output) + ".png").c_str());
-            }
         }
 
         {
@@ -504,8 +635,15 @@ void Draw() {
     TGraph *mm1 = NULL;
     TGraph *mm2 = NULL;
 
-    Plot("eeH.root", "eeH", 1100*5, 7.04*5000*1.0, ew1, ew2, em1, em2);
-    Plot("mumuH.root", "mumuH", 600*5, 6.77*5000*0.62, mw1, mw2, mm1, mm2);
+    //Plot("eeH.root", "eeH", 1100*5, 7.04*5000*1.0, ew1, ew2, em1, em2);
+    //Plot("mumuH.root", "mumuH", 600*5, 6.77*5000*0.62, mw1, mw2, mm1, mm2);
+
+    //Plot("small_root/eeHsa.root", "eeH", 1100*5, 7.04*5000*0.5, ew1, ew2, em1, em2);
+    //Plot("small_root/mumuHsa.root", "mumuH", 600*5, 6.77*5000*0.62, mw1, mw2, mm1, mm2);
+
+    // 0.63/0.78 is for BDT
+    Plot("root/eeHa.root", "eeH", 2.64E-3, 3500/0.8, 7.04*5600*0.63/0.77, ew1, ew2, em1, em2);
+    Plot("root/mumuHa.root", "mumuH", 2.64E-3, 3200/0.8, 6.77*5600*0.63/0.77, mw1, mw2, mm1, mm2);
 
     if(ew1 && ew2 && mw1 && mw2) {
         TCanvas cvs;
@@ -524,7 +662,7 @@ void Draw() {
         mw2->SetLineStyle(2);
 
         ew1->SetMaximum(0.8);
-        //ew1->SetMinimum(0);
+        ew1->SetMinimum(0);
         
         ew1->Draw("AL");
         mw1->Draw("SAME L");
@@ -574,7 +712,7 @@ void Draw() {
         mm2->SetLineWidth(2);
         mm2->SetLineStyle(2);
         
-        em1->SetMaximum(25);
+        em1->SetMaximum(45);
         em1->SetMinimum(0);
         em1->Draw("AL");
         mm1->Draw("SAME L");
