@@ -1,11 +1,11 @@
 void massError()
 {
 //=========Macro generated from canvas: c1_n2/c1_n2
-//=========  (Mon Jun 10 18:34:27 2019) by ROOT version 6.16/00
-   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",0,0,600,600);
+//=========  (Tue Jun 11 10:37:31 2019) by ROOT version 6.16/00
+   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",10,64,600,600);
    gStyle->SetOptStat(0);
    gStyle->SetOptTitle(0);
-   c1_n2->Range(-0.07425,-8.4375,0.42075,47.8125);
+   c1_n2->Range(-0.07425,-4.6875,0.42075,26.5625);
    c1_n2->SetFillColor(0);
    c1_n2->SetBorderMode(0);
    c1_n2->SetBorderSize(2);
@@ -28,16 +28,16 @@ void massError()
    0.32,
    0.36};
    Double_t em1_fy32[10] = {
-   7.170276,
-   7.352305,
-   7.983605,
-   8.900609,
-   9.592559,
-   10.1828,
-   10.77161,
-   11.23555,
-   12.31635,
-   12.88253};
+   5.766252,
+   5.902995,
+   6.318451,
+   6.83426,
+   7.37934,
+   7.897145,
+   8.442373,
+   8.947475,
+   9.454073,
+   9.958335};
    TGraph *graph = new TGraph(10,em1_fx32,em1_fy32);
    graph->SetName("em1");
    graph->SetTitle("");
@@ -51,7 +51,7 @@ void massError()
    
    TH1F *Graph_em132 = new TH1F("Graph_em132","",100,0,0.396);
    Graph_em132->SetMinimum(0);
-   Graph_em132->SetMaximum(45);
+   Graph_em132->SetMaximum(25);
    Graph_em132->SetDirectory(0);
    Graph_em132->SetStats(0);
 
@@ -89,16 +89,16 @@ void massError()
    0.32,
    0.36};
    Double_t mm1_fy33[10] = {
-   4.703845,
-   4.865472,
-   4.967887,
-   5.254921,
-   5.483663,
-   5.2573,
-   5.418004,
-   5.608323,
-   5.727129,
-   5.710606};
+   4.305255,
+   4.323412,
+   4.364613,
+   4.394206,
+   4.536544,
+   4.628868,
+   4.715075,
+   4.801461,
+   4.87429,
+   4.948266};
    graph = new TGraph(10,mm1_fx33,mm1_fy33);
    graph->SetName("mm1");
    graph->SetTitle("");
@@ -109,8 +109,8 @@ void massError()
    graph->SetLineWidth(2);
    
    TH1F *Graph_mm133 = new TH1F("Graph_mm133","",100,0,0.396);
-   Graph_mm133->SetMinimum(4.601517);
-   Graph_mm133->SetMaximum(5.829457);
+   Graph_mm133->SetMinimum(4.240954);
+   Graph_mm133->SetMaximum(5.012567);
    Graph_mm133->SetDirectory(0);
    Graph_mm133->SetStats(0);
 
@@ -140,8 +140,8 @@ void massError()
    0,
    0.36};
    Double_t em2_fy34[2] = {
-   33.01848,
-   33.01848};
+   15.14751,
+   15.14751};
    graph = new TGraph(2,em2_fx34,em2_fy34);
    graph->SetName("em2");
    graph->SetTitle("");
@@ -153,8 +153,8 @@ void massError()
    graph->SetLineWidth(2);
    
    TH1F *Graph_em234 = new TH1F("Graph_em234","",100,0,0.396);
-   Graph_em234->SetMinimum(32.91848);
-   Graph_em234->SetMaximum(34.11848);
+   Graph_em234->SetMinimum(15.04751);
+   Graph_em234->SetMaximum(16.24751);
    Graph_em234->SetDirectory(0);
    Graph_em234->SetStats(0);
 
@@ -180,8 +180,8 @@ void massError()
    0,
    0.36};
    Double_t mm2_fy35[2] = {
-   6.26724,
-   6.26724};
+   5.304372,
+   5.304372};
    graph = new TGraph(2,mm2_fx35,mm2_fy35);
    graph->SetName("mm2");
    graph->SetTitle("");
@@ -193,8 +193,8 @@ void massError()
    graph->SetLineWidth(2);
    
    TH1F *Graph_mm235 = new TH1F("Graph_mm235","",100,0,0.396);
-   Graph_mm235->SetMinimum(6.16724);
-   Graph_mm235->SetMaximum(7.36724);
+   Graph_mm235->SetMinimum(5.204372);
+   Graph_mm235->SetMaximum(6.404372);
    Graph_mm235->SetDirectory(0);
    Graph_mm235->SetStats(0);
 
@@ -228,16 +228,16 @@ void massError()
    0.32,
    0.36};
    Double_t com_fy36[10] = {
-   3.933055,
-   4.05748,
-   4.217944,
-   4.525109,
-   4.760682,
-   4.671434,
-   4.840208,
-   5.017924,
-   5.193135,
-   5.220666};
+   3.449777,
+   3.487956,
+   3.591129,
+   3.696126,
+   3.864657,
+   3.993424,
+   4.116559,
+   4.230782,
+   4.332371,
+   4.43135};
    graph = new TGraph(10,com_fx36,com_fy36);
    graph->SetName("com");
    graph->SetTitle("");
@@ -248,8 +248,8 @@ void massError()
    graph->SetLineWidth(2);
    
    TH1F *Graph_com36 = new TH1F("Graph_com36","",100,0,0.396);
-   Graph_com36->SetMinimum(3.804293);
-   Graph_com36->SetMaximum(5.349427);
+   Graph_com36->SetMinimum(3.35162);
+   Graph_com36->SetMaximum(4.529507);
    Graph_com36->SetDirectory(0);
    Graph_com36->SetStats(0);
 

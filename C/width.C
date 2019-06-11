@@ -1,8 +1,8 @@
 void width()
 {
 //=========Macro generated from canvas: c1_n2/c1_n2
-//=========  (Mon Jun 10 18:34:27 2019) by ROOT version 6.16/00
-   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",0,0,600,600);
+//=========  (Tue Jun 11 10:37:31 2019) by ROOT version 6.16/00
+   TCanvas *c1_n2 = new TCanvas("c1_n2", "c1_n2",10,64,600,600);
    gStyle->SetOptStat(0);
    gStyle->SetOptTitle(0);
    c1_n2->Range(-0.07425,-0.15,0.42075,0.85);
@@ -28,16 +28,16 @@ void width()
    0.32,
    0.36};
    Double_t ew1_fy28[10] = {
-   0.4897868,
-   0.4977402,
-   0.5189529,
-   0.5506855,
-   0.5778832,
-   0.6071246,
-   0.6292717,
-   0.6524544,
-   0.6699018,
-   0.6893452};
+   0.4491246,
+   0.4563828,
+   0.4802155,
+   0.5079921,
+   0.5372189,
+   0.5604564,
+   0.5849136,
+   0.6051676,
+   0.623366,
+   0.6428313};
    TGraph *graph = new TGraph(10,ew1_fx28,ew1_fy28);
    graph->SetName("ew1");
    graph->SetTitle("");
@@ -89,16 +89,16 @@ void width()
    0.32,
    0.36};
    Double_t mw1_fy29[10] = {
-   0.382578,
-   0.3859842,
-   0.3919914,
-   0.3991334,
-   0.4039031,
-   0.4079256,
-   0.4122444,
-   0.4152655,
-   0.4176107,
-   0.4196368};
+   0.4086592,
+   0.412834,
+   0.4200852,
+   0.4259175,
+   0.4313245,
+   0.4355647,
+   0.4386712,
+   0.4417663,
+   0.4440766,
+   0.4464726};
    graph = new TGraph(10,mw1_fx29,mw1_fy29);
    graph->SetName("mw1");
    graph->SetTitle("");
@@ -109,8 +109,8 @@ void width()
    graph->SetLineWidth(2);
    
    TH1F *Graph_mw129 = new TH1F("Graph_mw129","",100,0,0.396);
-   Graph_mw129->SetMinimum(0.3788721);
-   Graph_mw129->SetMaximum(0.4233427);
+   Graph_mw129->SetMinimum(0.4048778);
+   Graph_mw129->SetMaximum(0.4502539);
    Graph_mw129->SetDirectory(0);
    Graph_mw129->SetStats(0);
 

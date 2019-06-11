@@ -18,6 +18,7 @@
 bool const FULL_SIMULATION = 1;
 bool const SMEAR_SQRTS = 1;
 bool GAUS_FIT = 0;
+bool SHIFT = 1;
 double const sqrts_sigma1 = 1.34E-3;
 double const sqrts_sigma2 = 1.34E-3;
 
@@ -127,9 +128,12 @@ bool Select(double e1[], double e2[], double Ecms) {
     return true;
 }
 
-void Fit(TH1D *h, char const *output,
- char const *xtitle, double bkg_hint_NevtsInGeV,
- double &width, double &mass_uncertainty, double &Ns, bool first_call, bool last_call)
+void Fit(TH1D *h, double bkg_hint_NevtsInGeV,
+         double &width, double &mass_uncertainty, double &mass, double &Ns, 
+         bool draw,
+         char const *output,
+         char const *xtitle,
+         bool first_call, bool last_call)
 {
     TF1 *ff;
     if(GAUS_FIT) {
@@ -146,40 +150,128 @@ void Fit(TH1D *h, char const *output,
     }
     ff->SetNpx(1000);
     h->Fit(ff, "R Q");
+    if(SHIFT) {
+        ff->FixParameter(0, ff->GetParameter(0));
+        ff->FixParameter(2, ff->GetParameter(2));
+        ff->FixParameter(3, ff->GetParameter(3));
+        if (!GAUS_FIT)
+        {
+            ff->FixParameter(4, ff->GetParameter(4));
+            ff->FixParameter(5, ff->GetParameter(5));
+        }
+    }
+    h->Fit(ff, "R Q");
     width = ff->GetParameter(2);
+    mass = ff->GetParameter(1);
     mass_uncertainty = ff->GetParError(1);
     Ns = ff->GetParameter(0) * width * sqrt(2 * 3.1415);
 
-    TCanvas cvs;
-    h->GetYaxis()->SetTitle("Events / 0.2GeV");
-    h->GetXaxis()->SetTitle(xtitle);
-    h->SetMinimum(0);
-    h->Draw();
-    ff->SetLineColor(kBlue);
-    ff->SetLineWidth(2);
-
-    TF1 *signal_alone = 0;
-    if (GAUS_FIT)
+    if (draw)
     {
-        signal_alone = new TF1("", "gaus(0)", 120, 126);
-    }
-    else
-    {
-        signal_alone = new TF1("", crystalball_bkg_function, 120, 140, 5);
-    }
-    signal_alone->SetParameters(ff->GetParameters());
-    signal_alone->SetNpx(1000);
-    signal_alone->Draw("SAME");
 
-    if (first_call)
-        cvs.Print(("FitCurve_" + std::string(output) + ".pdf(").c_str());
-    else if (last_call)
-        cvs.Print(("FitCurve_" + std::string(output) + ".pdf)").c_str());
-    else
-        cvs.Print(("FitCurve_" + std::string(output) + ".pdf").c_str());
-    delete signal_alone;
+        TCanvas cvs;
+        h->GetYaxis()->SetTitle("Events / 0.2GeV");
+        h->GetXaxis()->SetTitle(xtitle);
+        h->SetMinimum(0);
+        h->Draw();
+        ff->SetLineColor(kBlue);
+        ff->SetLineWidth(2);
+
+        TF1 *signal_alone = 0;
+        if (GAUS_FIT)
+        {
+            signal_alone = new TF1("", "gaus(0)", 120, 126);
+        }
+        else
+        {
+            signal_alone = new TF1("", crystalball_bkg_function, 120, 140, 5);
+        }
+        signal_alone->SetParameters(ff->GetParameters());
+        signal_alone->SetNpx(1000);
+        signal_alone->Draw("SAME");
+
+        if (first_call)
+            cvs.Print(("FitCurve_" + std::string(output) + ".pdf(").c_str());
+        else if (last_call)
+            cvs.Print(("FitCurve_" + std::string(output) + ".pdf)").c_str());
+        else
+            cvs.Print(("FitCurve_" + std::string(output) + ".pdf").c_str());
+        delete signal_alone;
+    }
     delete ff;
 }
+
+
+void toymc(char const *name, double bkg, double eff, double nExp, double max, char const *output, double trkRes) {
+    TFile *f = new TFile(name);
+    TTree *tree = (TTree *)f->Get("evts");
+    double Ecms;
+    tree->SetBranchAddress("ISR1", isr1);
+    tree->SetBranchAddress("ISR2", isr2);
+    tree->SetBranchAddress("FSR1", fsr1);
+    tree->SetBranchAddress("FSR2", fsr2);
+    tree->SetBranchAddress("P1F", E1); // the final state electron
+    tree->SetBranchAddress("P2F", E2);
+    tree->SetBranchAddress("P1BS", bs1);
+    tree->SetBranchAddress("P2BS", bs2);
+    tree->SetBranchAddress("EMC_cms", &Ecms);
+    tree->GetEntry(0);
+
+    TH1D precision("", "", 2000, 124.5, 125.5);
+    int Nbins = 100;
+    TH1D *hrecEs = new TH1D("", "", Nbins, 120, 140);
+    TH1D *hrecEg = new TH1D("", "", Nbins, 120, 140);
+    int tr_nevts = 0;
+    for (int i = 0; i < (int)tree->GetEntries(); ++i)
+    {
+        tree->GetEntry(i);
+        SetRnd();
+        Smear(0, trkRes);
+        if (Select(e1_, e2_, Ecms))
+        {
+            double en = e1_[0] + e2_[0];
+            double px = e1_[1] + e2_[1];
+            double py = e1_[2] + e2_[2];
+            double pz = e1_[3] + e2_[3];
+            if (SMEAR_SQRTS)
+                SmearEnergySpread(en, px, py, pz, Ecms);
+
+            tr_nevts += 1;
+            hrecEs->Fill(TLorentzVector(px, py, pz, Ecms - en).M());
+        }
+    }
+
+    hrecEs->Scale(eff * nExp / tr_nevts);
+    for (int i = 1; i <= hrecEs->GetNbinsX(); ++i)
+        hrecEs->AddBinContent(i, bkg * hrecEs->GetBinWidth(i));
+    hrecEs->Sumw2(false);
+
+    for(int iMC = 0; iMC < 1000; iMC++) {
+        for (int i = 1; i <= hrecEs->GetNbinsX(); ++i)
+        {
+            double mean = hrecEs->GetBinContent(i);
+            double n = gRandom->Poisson(mean);
+            hrecEg->SetBinContent(i, n);
+        }
+        hrecEg->Sumw2(false);
+
+        double width;
+        double mass_uncertainty;
+        double Ns;
+        double mass;
+        Fit(hrecEg, bkg, width, mass_uncertainty, mass, Ns, iMC == 0, output, "", false, false);
+        //printf("%f\n", mass_uncertainty);
+        precision.Fill(mass);
+    }
+    { 
+        TCanvas cvs;
+        gStyle->SetOptStat(1);
+        precision.SetStats(1);
+        precision.Draw();
+        cvs.Print(("ToyMC_" + std::string(output) + ".pdf").c_str());
+    }
+}
+
 
 void Plot(char const *name, char const *output, double trkRes, double bkg, double nExp, TGraph *&grWidth, TGraph *&grWidth2, TGraph *&grMassErr, TGraph *&grMassErr2) {
 
@@ -396,7 +488,8 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
         double width;
         double mass_uncertainty;
         double Ns;
-        Fit(hrecRCE, output, "Full Simulation", bkg, width, mass_uncertainty, Ns, true, false);
+        double mass_;
+        Fit(hrecRCE, bkg, width, mass_uncertainty, mass_, Ns, true, output, "Full Simulation", true, false);
         if(FULL_SIMULATION) {
             sigma2.SetPoint(0, 0, width);
             sigma2.SetPoint(1, (sizeof(hrecEBs) / sizeof(void *) - 1) * da, width);
@@ -407,7 +500,7 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
         printf("mass uncertainty %f\n", mass_uncertainty);
         printf("width %f\n", width);
         printf("Ns %f\n", Ns);
-        Fit(hrecEs, output, "Fast Simulation", bkg, width, mass_uncertainty, Ns, false, false);
+        Fit(hrecEs, bkg, width, mass_uncertainty, mass_, Ns, true, output, "Fast Simulation", false, false);
         
         if(!FULL_SIMULATION) {
             sigma2.SetPoint(0, 0, width);
@@ -421,7 +514,7 @@ void Plot(char const *name, char const *output, double trkRes, double bkg, doubl
 
         for (int i = 0; i < sizeof(hrecEBs) / sizeof(void *); ++i)
         {
-            Fit(hrecEBs[i], output, "Fast Simulation", bkg, width, mass_uncertainty, Ns, false, i + 1 == sizeof(hrecEBs) / sizeof(void *));
+            Fit(hrecEBs[i], bkg, width, mass_uncertainty, mass_, Ns, true, output, "Fast Simulation", false, i + 1 == sizeof(hrecEBs) / sizeof(void *));
             sigma.SetPoint(i, da*i, width);
             massErr.SetPoint(i, da*i, 1000*mass_uncertainty);
         }
@@ -547,10 +640,12 @@ void Draw() {
 
 
     gRandom->SetSeed(234729479);
-    Plot("root/eeHa.root", "eeH", 3.8E-3, 3500/0.8, 7.04*5600, ew1, ew2, em1, em2);
-    Plot("root/mumuHa.root", "mumuH", 2.40E-3, 3200/0.8, 6.77*5600, mw1, mw2, mm1, mm2);
+    Plot("root/eeHa.root", "eeH", 3.3E-3, 3500/0.8, 7.04*5600, ew1, ew2, em1, em2);
+    Plot("root/mumuHa.root", "mumuH", 2.70E-3, 3200/0.8, 6.77*5600, mw1, mw2, mm1, mm2);
     //Plot("root/eeHa.root", "eeH", 2.64E-3, 0, 7.04*5600*0.63/0.77, ew1, ew2, em1, em2);
     //Plot("root/mumuHa.root", "mumuH", 2.64E-3, 0, 7.04*5600*0.63/0.77, mw1, mw2, mm1, mm2);
+    //toymc("root/eeHa.root", 3500/0.8, 0.513, 7.04*5600, 50, "eeHtoymc",  3.8E-3);
+    //toymc("root/mumuHa.root", 3200/0.8, 0.701, 6.77*5600, 50, "mumuHtoymc",  2.40E-3);
 
     if(ew1 && ew2 && mw1 && mw2) {
         TCanvas cvs;
@@ -619,7 +714,7 @@ void Draw() {
         mm2->SetLineWidth(2);
         mm2->SetLineStyle(2);
         
-        em1->SetMaximum(45);
+        em1->SetMaximum(25);
         em1->SetMinimum(0);
         em1->Draw("AL");
         mm1->Draw("SAME L");
