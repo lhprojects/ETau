@@ -123,7 +123,8 @@ FitResult Fit(TH1D* h, double bkg_hint_NevtsInGeV,
     fitResult.width_error = ff->GetParError(2);
     fitResult.mass = ff->GetParameter(1);
     fitResult.mass_error = ff->GetParError(1);
-    fitResult.Ns = ff->GetParameter(0) * fitResult.width * sqrt(2 * 3.1415);
+    //fitResult.Ns = ff->GetParameter(0) * fitResult.width * sqrt(2 * 3.1415);
+    fitResult.Ns = ff->GetParameter(0);
 
     if (draw) {
 
@@ -177,6 +178,8 @@ struct Result {
     TGraph* gr_width_wo;
     TGraph* gr_massErr_w;
     TGraph* gr_massErr_wo;
+    TGraph* gr_peakh_w;
+    TGraph* gr_peakh_wo;
 };
 
 void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg, double nExp, Result &res)
@@ -189,7 +192,9 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
     Events evts(rootname);
 
     int Nbins = 100;
-    int const NBMR = 10;
+    int const NBMR = 20;
+    double delta_a = 0.02;
+
     double const Ecms = evts.Ecms;
     V4 whole(0,0,0,Ecms);
 
@@ -202,7 +207,6 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
         hist_recoil_mass_comp[i] = new TH1D("", "", Nbins, 120, 140);
     }
 
-    double delta_a = 0.04;
     for(int i = 0; i < NBMR; ++i) {
         as[i] = delta_a*i;
     }
@@ -300,12 +304,18 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
         TGraph& sigma2 = *(new TGraph());
         TGraph& massErr = *(new TGraph());
         TGraph& massErr2 = *(new TGraph());
-
+        TGraph& high = *(new TGraph());
+        TGraph& high2 = *(new TGraph());
 
         res.gr_massErr_w = &massErr;
         res.gr_massErr_wo = &massErr2;
         res.gr_width_w = &sigma;
         res.gr_width_wo = &sigma2;
+        res.gr_peakh_w = &high;
+        res.gr_peakh_wo = &high2;
+
+
+
 
         if (1) {
             printf("full simulation\n");
@@ -324,6 +334,8 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
             sigma2.SetPoint(1, (NBMR - 1) * delta_a, fitResult.width);
             massErr2.SetPoint(0, 0, 1000 * fitResult.mass_error);
             massErr2.SetPoint(1, (NBMR - 1) * delta_a, 1000 * fitResult.mass_error);
+            high2.SetPoint(0, 0, fitResult.Ns);
+            high2.SetPoint(1, (NBMR - 1) * delta_a, fitResult.Ns);
         }
 
         for (int i = 0; i < NBMR; ++i) {
@@ -333,25 +345,40 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
             FitResult fitResult = Fit(hist_recoil_mass_comp[i], bkg, true, "Recoil mass [GeV]", filename.c_str());
             sigma.SetPoint(i, delta_a * i, fitResult.width);
             massErr.SetPoint(i, delta_a * i, 1000 * fitResult.mass_error);
+            high.SetPoint(i, delta_a* i, fitResult.Ns);
+            printf("%lf\n", fitResult.Ns);
         }
-
+        char const *hist_title = "a [#sqrt{GeV}]";
         { // Peak width
             TCanvas cvs;
             sigma.GetXaxis()->CenterTitle();
-            sigma.GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
-            sigma.GetYaxis()->CenterTitle();
-            sigma.GetYaxis()->SetTitle("Peak width of recoil mass [GeV]");
+            sigma.GetXaxis()->SetTitle(hist_title); 
+            sigma.GetYaxis()->SetTitle("Peak width [GeV]");
             sigma2.SetLineColor(kGray);
 
             sigma.Draw("AL");
             sigma2.Draw("SAME L");
-            cvs.Print((std::string(output) + ".pdf(").c_str());
+            cvs.Print(("img2/" + std::string(output) + "_wdith.pdf(").c_str());
         }
+
+        { // Peak high
+            TCanvas cvs;
+            high.GetXaxis()->CenterTitle();
+            high.GetXaxis()->SetTitle(hist_title);
+            high.GetYaxis()->CenterTitle();
+            high.GetYaxis()->SetTitle("Peak high [Events/(0.2GeV)]");
+            high2.SetLineColor(kGray);
+
+            high.Draw("AL");
+            high2.Draw("SAME L");
+            cvs.Print(("img2/" + std::string(output) + "_high.pdf(").c_str());
+        }
+
 
         { // Higgs mass error vs. a
             TCanvas cvs;
             massErr.GetXaxis()->CenterTitle();
-            massErr.GetXaxis()->SetTitle("a (#sigma(E_{#gamma})/E_{#gamma} = a/#sqrt{E_{#gamma}})");
+            massErr.GetXaxis()->SetTitle(hist_title);
             massErr.GetYaxis()->CenterTitle();
             massErr.GetYaxis()->SetTitle("Uncertainty of higgs mass [MeV]");
             massErr2.SetLineColor(kGray);
@@ -359,7 +386,7 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
             massErr.Draw("AL");
             massErr2.Draw("SAME L");
             gPad->SetLeftMargin(2);
-            cvs.Print((std::string(output) + ".pdf").c_str());
+            cvs.Print(("img2/" + std::string(output) + "_masserr.pdf").c_str());
         }
     }
 
@@ -387,11 +414,15 @@ void draw(Result res1, Result res2)
 {
     TGraph* ew1 = res1.gr_width_w;
     TGraph* ew2 = res1.gr_width_wo;
+    TGraph* eh1 = res1.gr_peakh_w;
+    TGraph* eh2 = res1.gr_peakh_wo;
     TGraph* em1 = res1.gr_massErr_w;
     TGraph* em2 = res1.gr_massErr_wo;
     
     TGraph* mw1 = res2.gr_width_w;
     TGraph* mw2 = res2.gr_width_wo;
+    TGraph* mh1 = res2.gr_peakh_w;
+    TGraph* mh2 = res2.gr_peakh_wo;
     TGraph* mm1 = res2.gr_massErr_w;
     TGraph* mm2 = res2.gr_massErr_wo;
 
@@ -434,6 +465,48 @@ void draw(Result res1, Result res2)
         leg.Draw();
         cvs.Print("img/result_peak_width.pdf");
     }
+
+
+    // peak_high
+    if (eh1 && eh2 && mh1 && mh2) {
+        TCanvas cvs;
+
+        eh1->SetLineColor(kRed);
+        eh1->SetLineWidth(2);
+        mh1->SetLineColor(kGreen);
+        mh1->SetLineWidth(2);
+
+        eh2->SetLineColor(kRed);
+        eh2->SetLineWidth(2);
+        eh2->SetLineStyle(2);
+
+        mh2->SetLineColor(kGreen);
+        mh2->SetLineWidth(2);
+        mh2->SetLineStyle(2);
+
+        eh1->SetMaximum(8E3);
+        eh1->SetMinimum(0);
+
+        eh1->Draw("AL");
+        mh1->Draw("SAME L");
+        eh2->Draw("SAME L");
+        mh2->Draw("SAME L");
+
+        eh1->SetName("eh1");
+        mh1->SetName("mh1");
+        eh2->SetName("eh2");
+        mh2->SetName("mh2");
+
+        TLegend leg(0.52, 0.70, 0.92, 0.9);
+        leg.AddEntry(eh1, "eeH (w/ FSR&BS)", "L");
+        leg.AddEntry(mh1, "#mu#muH (w/ FSR&BS)", "L");
+        leg.AddEntry(eh2, "eeH (w/o FSR&BS)", "L");
+        leg.AddEntry(mh2, "#mu#muH (w/o FSR&BS)", "L");
+        leg.SetBorderSize(0);
+        leg.Draw();
+        cvs.Print("img/result_peak_high.pdf");
+    }
+
 
     // mass_error
     if (em1 && mm1 && em2 && mm2) {
@@ -485,7 +558,6 @@ void draw(Result res1, Result res2)
         leg.SetBorderSize(0);
         leg.Draw();
         cvs.Print("img/result_mass_error.pdf");
-        cvs.Print("C/massError.C");
     }
 }
 
