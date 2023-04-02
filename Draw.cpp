@@ -354,6 +354,7 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
             sigma.GetXaxis()->CenterTitle();
             sigma.GetXaxis()->SetTitle(hist_title); 
             sigma.GetYaxis()->SetTitle("Peak width [GeV]");
+            sigma.GetYaxis()->CenterTitle();
             sigma2.SetLineColor(kGray);
 
             sigma.Draw("AL");
