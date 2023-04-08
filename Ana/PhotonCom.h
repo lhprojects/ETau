@@ -1,177 +1,7 @@
+#pragma once
+#include "Basics.h"
 #include "crystalball.h"
-#include <TCanvas.h>
-#include <TF1.h>
-#include <TFile.h>
-#include <TGraph.h>
-#include <TGraphErrors.h>
-#include <TH1D.h>
-#include <TH2D.h>
-#include <TLegend.h>
-#include <TLorentzVector.h>
-#include <TRandom.h>
-#include <TStyle.h>
-#include <TTree.h>
-#include <cmath>
-#include "Events.h"
-
-bool const FULL_SIMULATION = 1;
-bool const SMEAR_SQRTS = 1;
-bool GAUS_FIT = 0;
-bool const SHIFT = 0;
-double const sqrts_sigma1 = 1.34E-3;
-double const sqrts_sigma2 = 1.34E-3;
-
-
-V4 SmearEnergySpread(V4 const &v4, double Ecms, Rand const &rnd)
-{
-    double const en_ = v4.E();
-    double const px = v4.Px();
-    double const py = v4.Py();
-    double const pz_ = v4.Pz();
-
-    double const delta1 = sqrts_sigma1 * rnd.r1;
-    double const delta2 = sqrts_sigma2 * rnd.r2;
-    double const beta = (delta1 - delta2) / 2;
-    double en = en_ + beta * pz_;
-    double pz = pz_ + beta * en_;
-    en += 0.5 * (delta1 + delta2) * Ecms;
-
-    return V4(px, py, pz, en);
-}
-
-bool Select(V4 e1, V4 e2, double Ecms)
-{
-
-    double en = (e1 + e2).E();
-    double px = (e1 + e2).Px();
-    double py = (e1 + e2).Py();
-    double pz = (e1 + e2).Pz();
-    if (e1[0] == 0)
-        return false;
-    if (e2[0] == 0)
-        return false;
-    if (sqrt(px * px + py * py) < 20)
-        return false;
-    TLorentzVector v4(px, py, pz, en);
-    TLorentzVector inc(0, 0, 0, Ecms);
-    if (v4.M() < 80 || v4.M() > 100)
-        return false;
-    if ((inc - v4).M() < 120 && (inc - v4).M() > 150)
-        return false;
-
-    double phi = e1.DeltaPhi(e2);
-    if (phi > 175)
-        return false;
-
-    return true;
-}
-
-struct FitResult {
-    double width;
-    double mass;
-    double width_error;
-    double mass_error;
-    double Ns;
-
-    void printInfo()
-    {
-        FitResult& fitResult = *this;
-        printf("\twidth uncertainty: %f\n", fitResult.width_error);
-        printf("\tmass uncertainty %f\n", fitResult.mass_error);
-        printf("\twidth %f\n", fitResult.width);
-        printf("\t mass %f\n", fitResult.mass);
-        printf("\tNs %f\n", fitResult.Ns);
-    }
-};
-
-FitResult Fit(TH1D* h, double bkg_hint_NevtsInGeV,
-    bool draw,
-    char const* xtitle,
-    char const* filename)
-{
-    TF1* ff;
-    if (GAUS_FIT) {
-        ff = new TF1("", "gaus(0) + [3]", 120, 126);
-        ff->SetParNames("C", "Mean", "Sigma", "Bkg");
-        ff->SetParameters(1000, 125, 0.4, bkg_hint_NevtsInGeV * 20 / h->GetNbinsX());
-        if (bkg_hint_NevtsInGeV == 0)
-            ff->FixParameter(3, 0);
-    } else {
-        ff = new_crystalball_bkg_function("", 120, 140);
-        ff->SetParameters(1000, 125.5, 0.4, -0.5, 0.7, bkg_hint_NevtsInGeV * 20 / h->GetNbinsX());
-        if (bkg_hint_NevtsInGeV == 0)
-            ff->FixParameter(5, 0);
-    }
-
-    ff->SetNpx(1000);
-    h->Fit(ff, "R");
-
-    if (SHIFT) {
-        ff->FixParameter(0, ff->GetParameter(0));
-        ff->FixParameter(2, ff->GetParameter(2));
-        ff->FixParameter(3, ff->GetParameter(3));
-        if (!GAUS_FIT) {
-            ff->FixParameter(4, ff->GetParameter(4));
-            ff->FixParameter(5, ff->GetParameter(5));
-        }
-    }
-    h->Fit(ff, "R Q");
-
-    FitResult fitResult;
-
-    fitResult.width = ff->GetParameter(2);
-    fitResult.width_error = ff->GetParError(2);
-    fitResult.mass = ff->GetParameter(1);
-    fitResult.mass_error = ff->GetParError(1);
-    //fitResult.Ns = ff->GetParameter(0) * fitResult.width * sqrt(2 * 3.1415);
-    fitResult.Ns = ff->GetParameter(0);
-
-    if (draw) {
-
-        TCanvas cvs;
-        h->GetYaxis()->SetTitle("Events / 0.2GeV");
-        h->GetYaxis()->CenterTitle();
-        h->GetXaxis()->SetTitle(xtitle);
-        h->GetXaxis()->CenterTitle();
-        h->SetMinimum(0);
-        h->Draw();
-
-        ff->SetLineColor(kBlue);
-        ff->SetLineWidth(2);
-
-        TF1* signal_alone = 0;
-        if (GAUS_FIT) {
-            signal_alone = new TF1("", "gaus(0)", 120, 126);
-        } else {
-            signal_alone = new TF1("", crystalball_bkg_function, 120, 140, 5);
-        }
-        signal_alone->SetParameters(ff->GetParameters());
-        signal_alone->SetNpx(1000);
-        signal_alone->Draw("SAME");
-
-        if(filename&& strlen(filename) > 0) {
-            cvs.Print(filename);
-        }
-        delete signal_alone;
-    }
-    delete ff;
-    return fitResult;
-}
-
-
-void PrintPhoton(char const* name, char const* output) {
-    Events evts(name);
-    printf("%f GeV\n", evts.Ecms);
-    Hists hs(evts.Ecms);
-    for (; evts.hasEvent(); evts.next()) {
-
-        Event &evt = evts.getEvt();
-        hs.fill(evt);
-    }
-    printf("print");
-    
-    hs.print(output);
-}
+#include "BeamEnergySmear.h"
 
 struct Result {
     TGraph* gr_width_w;
@@ -182,9 +12,10 @@ struct Result {
     TGraph* gr_peakh_wo;
 };
 
-void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg, double nExp, Result &res)
+void PhotonCom(
+    Config const &config,
+    char const* rootname, char const* output, TrackRes trkRes, double bkg, double nExp, Result &res)
 {
-    PrintPhoton(rootname, output);
 
     double rc_nevts = 0;
     double tr_nevts = 0;
@@ -295,7 +126,7 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
         leg->AddEntry(hist_recoil_mass_fast, "fast simulation", "l");
         leg->Draw();
 
-        cvs.Print((std::string("img/") + output + "_fast_full.pdf").c_str());
+        cvs.Print((config.imageFolder + "/" + output + "_fast_full.pdf").c_str());
     }
 
 
@@ -319,15 +150,24 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
 
         if (1) {
             printf("full simulation\n");
-            std::string filename = "img/" + std::string(output) + "_full_simulation.pdf";
-            FitResult fitResult = Fit(hist_recoil_mass_full, bkg, true, "Full Simulation", filename.c_str());
+            std::string filename = config.imageFolder + "/"  + std::string(output) + "_full_simulation.pdf";
+            FitConfig conf;
+            conf.draw = true;
+            conf.filename = filename.c_str();
+            conf.xtitle = "Recoil mass [GeV]";
+            FitResult fitResult = Fit(hist_recoil_mass_full, bkg, conf);
             fitResult.printInfo();
         }
 
         if (1) {
             printf("fast simulation\n");
-            std::string filename = "img/" + std::string(output) + "_fast_simulation.pdf";
-            FitResult fitResult = Fit(hist_recoil_mass_fast, bkg, true, "Recoil mass [GeV]", filename.c_str());
+            std::string filename = config.imageFolder + "/"  + std::string(output) + "_fast_simulation.pdf";
+            FitConfig conf;
+            conf.draw = true;
+            conf.filename = filename.c_str();
+            conf.xtitle = "Recoil mass [GeV]";
+
+            FitResult fitResult = Fit(hist_recoil_mass_fast, bkg, conf);
             fitResult.printInfo();
 
             sigma2.SetPoint(0, 0, fitResult.width);
@@ -341,12 +181,15 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
         for (int i = 0; i < NBMR; ++i) {
             char av[100];
             sprintf(av, "a%f", as[i]);
-            std::string filename = "img/" + std::string(output) + "_fast_simulation_" + av + ".pdf";
-            FitResult fitResult = Fit(hist_recoil_mass_comp[i], bkg, true, "Recoil mass [GeV]", filename.c_str());
+            std::string filename = config.imageFolder2 + "/" + std::string(output) + "_fast_simulation_" + av + ".pdf";
+            FitConfig conf;
+            conf.draw = true;
+            conf.filename = filename.c_str();
+            conf.xtitle = "Recoil mass [GeV]";
+            FitResult fitResult = Fit(hist_recoil_mass_comp[i], bkg, conf);
             sigma.SetPoint(i, delta_a * i, fitResult.width);
             massErr.SetPoint(i, delta_a * i, 1000 * fitResult.mass_error);
             high.SetPoint(i, delta_a* i, fitResult.Ns);
-            printf("%lf\n", fitResult.Ns);
         }
         char const *hist_title = "a [#sqrt{GeV}]";
         { // Peak width
@@ -359,7 +202,7 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
 
             sigma.Draw("AL");
             sigma2.Draw("SAME L");
-            cvs.Print(("img2/" + std::string(output) + "_wdith.pdf(").c_str());
+            cvs.Print((config.imageFolder2 + "/" + output + "_wdith.pdf(").c_str());
         }
 
         { // Peak high
@@ -372,7 +215,7 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
 
             high.Draw("AL");
             high2.Draw("SAME L");
-            cvs.Print(("img2/" + std::string(output) + "_high.pdf(").c_str());
+            cvs.Print((config.imageFolder2 + "/" + output + "_high.pdf(").c_str());
         }
 
 
@@ -387,31 +230,14 @@ void Plot(char const* rootname, char const* output, TrackRes trkRes, double bkg,
             massErr.Draw("AL");
             massErr2.Draw("SAME L");
             gPad->SetLeftMargin(2);
-            cvs.Print(("img2/" + std::string(output) + "_masserr.pdf").c_str());
+            cvs.Print((config.imageFolder2 + "/" + output + "_masserr.pdf").c_str());
         }
     }
 
 }
 
 
-void SetStyle()
-{
-    gStyle->SetOptStat(0);
-    gStyle->SetOptTitle(0);
-    gStyle->SetCanvasDefH(600);
-    gStyle->SetCanvasDefW(600);
-    gStyle->SetLabelSize(0.03, "xyz");
-    gStyle->SetTitleSize(0.04, "xyz");
-    gStyle->SetTitleOffset(1.5, "yz");
-    gStyle->SetTitleOffset(1.5, "x");
-
-    gStyle->SetPadBottomMargin(0.15);
-    gStyle->SetPadTopMargin(0.05);
-    gStyle->SetPadRightMargin(0.05);
-    gStyle->SetPadLeftMargin(0.15);
-}
-
-void draw(Result res1, Result res2)
+void DrawFroPhotonCom(Result res1, Result res2)
 {
     TGraph* ew1 = res1.gr_width_w;
     TGraph* ew2 = res1.gr_width_wo;
@@ -464,7 +290,7 @@ void draw(Result res1, Result res2)
         leg.AddEntry(mw2, "#mu#muH (w/o FSR&BS)", "L");
         leg.SetBorderSize(0);
         leg.Draw();
-        cvs.Print("img/result_peak_width.pdf");
+        cvs.Print( (config.imageFolder + "/" + "result_peak_width.pdf").c_str() );
     }
 
 
@@ -505,7 +331,7 @@ void draw(Result res1, Result res2)
         leg.AddEntry(mh2, "#mu#muH (w/o FSR&BS)", "L");
         leg.SetBorderSize(0);
         leg.Draw();
-        cvs.Print("img/result_peak_high.pdf");
+        cvs.Print( (config.imageFolder + "/" + "result_peak_high.pdf").c_str() );
     }
 
 
@@ -558,24 +384,7 @@ void draw(Result res1, Result res2)
         leg.AddEntry(&com, "Combined (w/ FSR&BS)", "L");
         leg.SetBorderSize(0);
         leg.Draw();
-        cvs.Print("img/result_mass_error.pdf");
+        cvs.Print( (config.imageFolder + "/" + "result_mass_error.pdf").c_str() );
     }
 }
 
-void Draw()
-{
-
-
-    SetStyle();
-    gRandom->SetSeed(234729479);
-
-    TrackRes trkRes;
-    TrackRes trackResMuon;
-    Result res1;
-    Result res2;
-
-    Plot("root/eeHa.root", "eeH", trkRes, 3500 / 0.8, 7.04 * 5600, res1);
-    Plot("root/mumuHa.root", "mumuH", trkRes, 3200 / 0.8, 6.77 * 5600, res2);
-
-    draw(res1, res2);
-}
