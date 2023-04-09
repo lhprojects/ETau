@@ -168,7 +168,8 @@ CalcRZ calcRZ)
             printf("full simulation\n");
             std::string filename = config.imageFolder + "/" + output + "_full_simulation.pdf";
             FitConfig conf;
-            conf.draw = true;
+            conf.draw=true;
+
             conf.filename = filename.c_str();
             conf.xtitle = "Recoil mass [GeV]";
             conf.printInfo = true;
@@ -186,7 +187,7 @@ CalcRZ calcRZ)
             sprintf(av, "R%f", Rs[i]);
             std::string filename = config.imageFolder2 + "/" + output + "_fast_simulation_" + av + ".pdf";
             FitConfig conf;
-            conf.draw = true;
+            conf.draw = near(Rs[i], 1.4) || near(Rs[i], 1.8) || near(Rs[i], 2.2) || near(Rs[i], 2.5);
             conf.filename = filename.c_str();
             conf.xtitle = "Recoil mass [GeV]";
 

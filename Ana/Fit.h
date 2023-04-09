@@ -85,16 +85,21 @@ FitResult Fit(TH1D* h, double bkg_hint_NevtsInGeV, FitConfig const &config)
 
     if (config.draw) {
 
+   
         TCanvas cvs;
         h->GetYaxis()->SetTitle("Events / 0.2GeV");
         h->GetYaxis()->CenterTitle();
         h->GetXaxis()->SetTitle(config.xtitle);
         h->GetXaxis()->CenterTitle();
         h->SetMinimum(0);
-        h->Draw();
+        h->SetMarkerColor(kBlack);
+        h->SetMarkerStyle(kFullCircle);
+        h->SetLineColor(kBlack);
+        h->Draw("PE1");
 
         ff->SetLineColor(kBlue);
         ff->SetLineWidth(2);
+        ff->Draw("SAME");
 
         TF1* signal_alone = 0;
         if (GAUS_FIT) {

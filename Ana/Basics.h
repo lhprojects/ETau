@@ -68,3 +68,14 @@ struct Config {
 
 Config const config;
 
+
+inline void normalize_hist(TH1D* h)
+{
+    int nbins = h->GetNbinsX();
+    h->Scale(1. / h->Integral(0, nbins + 1));
+}
+
+inline bool near(double a, double b) {
+    if(fabs(a-b)<1E-6) return true;
+    return false;
+}

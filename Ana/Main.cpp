@@ -1,18 +1,25 @@
 #include "Events.h"
 #include "RZ.h"
 #include "PlotPhoton.h"
+#include "PlotPolarAngle.h"
 #include "PhotonCom.h"
 
 void SetStyle()
 {
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
-    gStyle->SetCanvasDefH(600);
-    gStyle->SetCanvasDefW(600);
-    gStyle->SetLabelSize(0.03, "xyz");
-    gStyle->SetTitleSize(0.04, "xyz");
-    gStyle->SetTitleOffset(1.5, "yz");
-    gStyle->SetTitleOffset(1.5, "x");
+    gStyle->SetCanvasDefH(500);
+    gStyle->SetCanvasDefW(500);
+    gStyle->SetLabelSize(0.045, "xyz");
+    gStyle->SetTitleSize(0.045, "xyz");
+    gStyle->SetTitleOffset(1.55, "yz");
+    gStyle->SetTitleOffset(1.1, "x");
+    gStyle->SetHistLineWidth(3);
+    gStyle->SetLineWidth(2);
+
+    gStyle->SetEndErrorSize(3);
+    gStyle->SetErrorX(0.1);
+    gStyle->SetMarkerSize(0.8);
 
     gStyle->SetPadBottomMargin(0.15);
     gStyle->SetPadTopMargin(0.05);
@@ -42,7 +49,7 @@ void AnaForPhotonResolution(Config const &config)
 
 
 void AnaForRZ(Config const &config)
-{
+{    
     {
         CalcRZ calcRz(TrackerR0, TrackerZ0, COS_VOL);
         AnaForRZ2(config,
@@ -71,6 +78,7 @@ void Main()
 
     AnaPhoton(config);
     AnaForPhotonResolution(config);
+    DrawLepton(config, config.mumuHRootFileName, "mumu");
     AnaForRZ(config);
 }
 

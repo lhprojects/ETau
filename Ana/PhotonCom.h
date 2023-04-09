@@ -12,6 +12,7 @@ struct Result {
     TGraph* gr_peakh_wo;
 };
 
+
 void PhotonCom(
     Config const &config,
     char const* rootname, char const* output, TrackRes trkRes, double bkg, double nExp, Result &res)
@@ -183,7 +184,7 @@ void PhotonCom(
             sprintf(av, "a%f", as[i]);
             std::string filename = config.imageFolder2 + "/" + std::string(output) + "_fast_simulation_" + av + ".pdf";
             FitConfig conf;
-            conf.draw = true;
+            conf.draw = near(as[i], 0) || near(as[i], 0.04) || near(as[i], 0.16) || near(as[i], 0.36);
             conf.filename = filename.c_str();
             conf.xtitle = "Recoil mass [GeV]";
             FitResult fitResult = Fit(hist_recoil_mass_comp[i], bkg, conf);

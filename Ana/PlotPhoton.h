@@ -3,12 +3,6 @@
 #include "Events.h"
 
 
-inline void normalize_hist(TH1D* h)
-{
-    int nbins = h->GetNbinsX();
-    h->Scale(1. / h->Integral(0, nbins + 1));
-}
-
 struct Hists {
 
     Hists(double Ecms) {
@@ -31,6 +25,10 @@ struct Hists {
         hist_total_mass->Fill(evt.total.M());
     }
 
+    void fmtHist(TH1*hist) {
+        hist->SetLineWidth(3);
+    }
+
     void print(std::string const &output)
     {
         
@@ -41,8 +39,10 @@ struct Hists {
             hisr->GetXaxis()->SetTitle("Initial State Radiation Energy [GeV]");
             hisr->GetYaxis()->CenterTitle();
             hisr->GetYaxis()->SetTitle("A.U. / 0.5GeV");
+            fmtHist(hisr);
             //hisr.GetYaxis()->SetTitleOffset(0.1);
             hisr->Draw("hist");
+
             std::string pdf_name = output + "_ISR_Energy.pdf";
             cvs.Print(pdf_name.c_str());
         }
@@ -53,6 +53,7 @@ struct Hists {
             hfsr->GetXaxis()->SetTitle("Final State Radiation Energy [GeV]");
             hfsr->GetYaxis()->CenterTitle();
             hfsr->GetYaxis()->SetTitle("A.U. / 0.5GeV");
+            fmtHist(hisr);
             //hfsr.GetYaxis()->SetTitleOffset(0.1);
             hfsr->Draw("hist");
             std::string pdf_name =  output + "_FSR_Energy.pdf";
@@ -65,6 +66,7 @@ struct Hists {
             hbs->GetXaxis()->SetTitle("Bresstrahlung Energy [GeV]");
             hbs->GetYaxis()->CenterTitle();
             hbs->GetYaxis()->SetTitle("A.U. / 0.5GeV");
+            fmtHist(hisr);
             //hbs.GetYaxis()->SetTitleOffset(0.1);
             hbs->Draw("hist");
             std::string pdf_name = output + "_Bress_Energy.pdf";
