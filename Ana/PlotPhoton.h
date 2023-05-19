@@ -7,9 +7,9 @@ struct Hists {
 
     Hists(double Ecms) {
 
-        hfsr = new TH1D("fsr", "", 100, 0, 50);
-        hbs = new TH1D("bs", "", 50, 0, 25);
-        hisr = new TH1D("isr", "", 50, 0, 25);
+        hfsr = new TH1D("fsr", "", 100, 0, 25);
+        hbs = new TH1D("bs", "", 100, 0, 25);
+        hisr = new TH1D("isr", "", 100, 0, 25);
         hist_total_mass = new TH1D("hist_total_mass", "hist_total_mass",
             2 * (int)(Ecms + 20), 0, Ecms + 20);
     }
@@ -24,17 +24,22 @@ struct Hists {
         hisr->Fill(evt.isr2.E());
         hist_total_mass->Fill(evt.total.M());
     }
-
+	
+private:
     void fmtHist(TH1*hist) {
         hist->SetLineWidth(3);
     }
-
+public:
     void print(std::string const &output)
     {
-        
+
+    	bool logy = true;
+
+
         {
             normalize_hist(hisr);
             TCanvas cvs;
+            gPad->SetLogy(logy);	
             hisr->GetXaxis()->CenterTitle();
             hisr->GetXaxis()->SetTitle("Initial State Radiation Energy [GeV]");
             hisr->GetYaxis()->CenterTitle();
@@ -49,6 +54,7 @@ struct Hists {
         {
             normalize_hist(hfsr);
             TCanvas cvs;
+            gPad->SetLogy(logy);	
             hfsr->GetXaxis()->CenterTitle();
             hfsr->GetXaxis()->SetTitle("Final State Radiation Energy [GeV]");
             hfsr->GetYaxis()->CenterTitle();
@@ -62,6 +68,7 @@ struct Hists {
         {
             normalize_hist(hbs);
             TCanvas cvs;
+            gPad->SetLogy(logy);	
             hbs->GetXaxis()->CenterTitle();
             hbs->GetXaxis()->SetTitle("Bresstrahlung Energy [GeV]");
             hbs->GetYaxis()->CenterTitle();
